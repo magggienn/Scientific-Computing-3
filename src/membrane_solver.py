@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import seaborn as sns
 import matplotlib.animation as animation
+from scipy.sparse import linalg as sparse_linalg
+from scipy.sparse import lil_matrix
 
 # Plotting parameters
 sns.set(style="whitegrid")  # Use seaborn style
@@ -75,8 +77,13 @@ class MembraneSolver:
         # Laplacian matrix
         #     1
         #   1-4 1
-        #     1
-        A = np.zeros((n**2, n**2))
+        #     1        
+        if self.use_sparse:
+            from scipy.sparse import lil_matrix
+            A = lil_matrix((n**2, n**2))
+        else:
+            A = np.zeros((n**2, n**2))
+            
         for i in range(n):
             for j in range(n):
                 idx = i * n + j
@@ -98,11 +105,12 @@ class MembraneSolver:
         h_x = self.L / (n + 1)
         h_y = (2 * self.L) / (n + 1) # Grid spacing in y direction (twice as long)
         
-        # Laplacian matrix
-        #     1
-        #   1-4 1
-        #     1
-        A = np.zeros((n**2, n**2))
+        # Laplacian matrix       
+        if self.use_sparse:
+            A = lil_matrix((n**2, n**2))
+        else:
+            A = np.zeros((n**2, n**2))
+       
         for i in range(n):
             for j in range(n):
                 idx = i * n + j
@@ -133,20 +141,29 @@ class MembraneSolver:
             raise ValueError("Matrix not built yet. Call build_matrix() first.")
         
         A_scaled = self.A / (self.h**2)
-        eigenvalues, eigenvectors = np.linalg.eigh(A_scaled)
         
-        idx = eigenvalues.argsort()
-        eigenvalues = eigenvalues[idx]
-        eigenvectors = eigenvectors[:, idx]
+        # Eigenvalue problem
+        if self.use_sparse:
+            eigenvalues, eigenvectors = sparse_linalg.eigsh(A_scaled, k=num_modes, which='SM')
+        else:
+            eigenvalues, eigenvectors = np.linalg.eig(A_scaled)
+            
+            # Sort eigenvalues and corresponding eigenvectors
+            idx = eigenvalues.argsort()
+            eigenvalues = eigenvalues[idx]
+            eigenvectors = eigenvectors[:, idx]
+            
+            eigenvalues = eigenvalues[:num_modes]
+            
+            # Ensure real-valued eigenvectors by taking the real part
+            # and normalizing the eigenvectors
+            eigenvectors = eigenvectors[:, :num_modes].real
+            for i in range(num_modes):
+                eigenvectors[:, i] /= np.linalg.norm(eigenvectors[:, i])
         
-        # take the first(smallest) num_modes eigenvalues and eigenvectors
-        eigenvalues = eigenvalues[:num_modes]
-        eigenvectors = eigenvectors[:, :num_modes]
-          
-        # frequencies from eigenvalues (labmda^2 = -K)
+        # K = -lambda^2
         frequencies = np.sqrt(-eigenvalues)
-        
-        # Store results
+
         self.eigenvalues = eigenvalues
         self.eigenvectors = eigenvectors
         self.frequencies = frequencies
