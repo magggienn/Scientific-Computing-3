@@ -20,8 +20,8 @@ from scipy.sparse import linalg as sparse_linalg
 from scipy.sparse import lil_matrix
 
 # Plotting parameters
-sns.set(style="whitegrid")  # Use seaborn style
-plt.rc('text', usetex=True)  # Disable LaTeX to avoid missing dependency issues
+sns.set(style="whitegrid") 
+plt.rc('text', usetex=True) 
 plt.rc('font', family='serif')
 labelsize = 14
 ticksize = 14
