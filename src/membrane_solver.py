@@ -128,6 +128,13 @@ class MembraneSolver:
                     A[idx, idx + 1] = 1/h_y**2
         self.A = A
         return A
+    
+    def build_circle_matrix(self):
+        """Build the Laplacian matrix for a circular membrane."""
+        n = self.n
+        h = self.h
+        return self.build_square_matrix()
+        
                     
     def solve(self, num_modes=6):
         """
