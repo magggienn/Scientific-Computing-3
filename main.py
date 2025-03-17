@@ -5,23 +5,29 @@ from src.direct_method import SolveDirectMethod
 
 
 def solve_membrane():
-    # square membrane
-    square = MembraneSolver(c=1,shape='square', L=1.0, n=30, use_sparse=True)
-    square.solve(num_modes=5)
-    eigenvalues, _ = square.solve(num_modes=5)
-    # In your solve method, print a few eigenvalues to check:
-    print("First few eigenvalues:", eigenvalues[:5])
+    for shape in ['square', 'rectangle', 'circle']:
+        solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
+        solver.solve(num_modes=6)
+        print(f"\nShape: {shape}, First 6 frequencies: {solver.frequencies}")
+        solver.plot_modes()
+        solver.compare_performance()
+    # # square membrane
+    # square = MembraneSolver(c=1,shape='square', L=1.0, n=30, use_sparse=True)
+    # square.solve(num_modes=5)
+    # eigenvalues, _ = square.solve(num_modes=5)
+    # # In your solve method, print a few eigenvalues to check:
+    # print("First few eigenvalues:", eigenvalues[:5])
 
-    # For a square membrane with side length L=1, the analytical eigenvalues are:
-    # λ = -π²(m² + n²) where m, n are positive integers
-    analytical = [-(np.pi**2)*(m**2 + n**2) for m in range(1, 3) for n in range(1, 3)]
-    analytical.sort()
-    print("Analytical eigenvalues:", analytical[:5])
-    print("Eigenvalues:", eigenvalues)
+    # # For a square membrane with side length L=1, the analytical eigenvalues are:
+    # # λ = -π²(m² + n²) where m, n are positive integers
+    # analytical = [-(np.pi**2)*(m**2 + n**2) for m in range(1, 3) for n in range(1, 3)]
+    # analytical.sort()
+    # print("Analytical eigenvalues:", analytical[:5])
+    # print("Eigenvalues:", eigenvalues)
 
 
-    square.plot_mode(0)
-    plt.savefig(f'figures/square_modes.pdf')
+    # square.plot_mode(0)
+    # plt.savefig(f'figures/square_modes.pdf')
     
     # # rectangular membrane
     # rectangle = MembraneSolver(shape='rectangle', L=1.0, n=30)
