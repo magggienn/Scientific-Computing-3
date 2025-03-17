@@ -18,6 +18,9 @@ import seaborn as sns
 import matplotlib.animation as animation
 from scipy.sparse import linalg as sparse_linalg
 from scipy.sparse import lil_matrix
+from scipy.sparse.linalg import eigs
+from scipy.linalg import eig
+import scipy.sparse
 
 # Plotting parameters
 sns.set(style="whitegrid") 
@@ -29,113 +32,86 @@ colors = sns.color_palette("Set2", 8)
 
 
 class MembraneSolver:
-    def __init__(self, n, L, shape, use_sparse=False, c=1, boundary_condition=0):
+    def __init__(self, n,c=1, shape='square', L=1.0, use_sparse=False):
         """
-        shape: 'square', 'rectangle', or 'circle'
-        L: Size parameter (side length for square, diameter for circle)
-        n: Number of grid points in each dimension- interior points - not including boundary points 
-        use_sparse (bool): Whether to use sparse matrix methods
+        Initialize the membrane solver.
         """
         self.n = n
         self.L = L
         self.shape = shape
         self.use_sparse = use_sparse
         self.c = c
-        self.boundary_condition = boundary_condition
+        
+        if shape == 'square':
+            # Create a grid for the square membrane
+            self. x = np.linspace(0, L, n)
+            self.y = np.linspace(0, L, n)
+            self.dx = self.x[1] - self.x[0] # the grid spacing between x points
+            self.dy = self.y[1] - self.y[0] # the grid spacing between y points
+            self.mask = np.ones((n, n), dtype=bool)
+            
+        # Create mapping from 2D grid to 1D indices for points inside the domain
+        self.num_points = np.sum(self.mask) # number of points inside the domain
+        self.indices = np.full((n, n), -1, dtype=int) # prepare indices that have -1 for points outside the domain
+        self.indices[self.mask] = np.arange(self.num_points) # assign indices to points inside the domain
+        
         self.eigenvalues = None
         self.eigenvectors = None
         self.frequencies = None
         
-        # Grid spacing
-        # 0     h     2h    3h    ...  nh    L
-        # x₀ --- x₁ --- x₂ --- x₃ --- ... --- xₙ₊₁
-        # |_____|_____|_____|_____|_..._|_____|
-        #  seg1  seg2  seg3  seg4  ...  seg(n+1)
-        self.h = L / (n + 1)
-        
-        self.x = np.linspace(0, L, n+2)[1:-1]  # Remove boundary points
-        self.y = np.linspace(0, L, n+2)[1:-1]
-        
         self.build_matrix()
         
     def build_matrix(self):
-        """Build the Laplacian matrix for the selected shape."""
-        if self.shape == 'square':
-            self.build_square_matrix()
-        elif self.shape == 'rectangle':
-            self.build_rectangle_matrix()
-        elif self.shape == 'circle':
-            self.build_circle_matrix()
-            
-    def build_square_matrix(self):
-        """Build the Laplacian matrix for a square membrane."""
+        """Build the Laplacian matrix for the selected shape with Dirichlet boundary conditions."""
         n = self.n
-        h = self.h
-        c = self.c
-        bc = self.boundary_condition
+        dx = self.dx
+        dy = self.dy
         
-        # Laplacian matrix
-        #     1
-        #   1-4 1
-        #     1        
-        if self.use_sparse:
-            from scipy.sparse import lil_matrix
-            A = lil_matrix((n**2, n**2))
-        else:
-            A = np.zeros((n**2, n**2))
-            
+        # Initialize data for sparse matrix construction
+        laplace_data = []
+        row_indices = []
+        col_indices = []
+        
+        # Fill the matrix with discretized Laplacian
         for i in range(n):
             for j in range(n):
-                idx = i * n + j
-                A[idx, idx] = -4
-                if i > 0:
-                    A[idx, idx - n] = 1
-                if i < n - 1:
-                    A[idx, idx + n] = 1
-                if j > 0:
-                    A[idx, idx - 1] = 1
-                if j < n - 1:
-                    A[idx, idx + 1] = 1
-        self.A = A
-        return A 
-        
-    def build_rectangle_matrix(self):
-        """Build the Laplacian matrix for a rectangular membrane."""
-        n = self.n
-        h_x = self.L / (n + 1)
-        h_y = (2 * self.L) / (n + 1) # Grid spacing in y direction (twice as long)
-        
-        # Laplacian matrix       
-        if self.use_sparse:
-            A = lil_matrix((n**2, n**2))
-        else:
-            A = np.zeros((n**2, n**2))
-       
-        for i in range(n):
-            for j in range(n):
-                idx = i * n + j
-                 # Diagonal element (adjusted for different spacing in x and y)
-                A[idx, idx] = -2/h_x**2 - 2/h_y**2
-                
-                # Connect to neighbors
-                if i > 0:  # left
-                    A[idx, idx - n] = 1/h_x**2
-                if i < n - 1:  # right
-                    A[idx, idx + n] = 1/h_x**2
-                if j > 0:  # down
-                    A[idx, idx - 1] = 1/h_y**2
-                if j < n - 1:  # up
-                    A[idx, idx + 1] = 1/h_y**2
-        self.A = A
-        return A
-    
-    def build_circle_matrix(self):
-        """Build the Laplacian matrix for a circular membrane."""
-        n = self.n
-        h = self.h
-        return self.build_square_matrix()
-        
+                if self.mask[i, j]:
+                    idx = self.indices[i, j]
                     
+                    # Set diagonal element (center of stencil)
+                    laplace_data.append(-4/(dx*dx))
+                    row_indices.append(idx)
+                    col_indices.append(idx)
+                    
+                    # Check neighbors
+                    # (-1,0) is left, (1,0) is right, (0,-1) is down, (0,1) is up
+                    for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        ni, nj = i + di, j + dj # current neighbor
+                        
+                        if 0 <= ni < n and 0 <= nj < n:
+                            if self.mask[ni, nj]:
+                                # Interior neighbor
+                                neighbor_idx = self.indices[ni, nj]
+                                laplace_data.append(1/(dx*dx))
+                                row_indices.append(idx)
+                                col_indices.append(neighbor_idx)
+                                                            
+        # Create the sparse matrix
+        if self.use_sparse:
+            self.A = scipy.sparse.csr_matrix(
+                (laplace_data, (row_indices, col_indices)), 
+                shape=(self.num_points, self.num_points)
+            )
+        else:
+            # Convert to dense matrix
+            A_sparse = scipy.sparse.csr_matrix(
+                (laplace_data, (row_indices, col_indices)), 
+                shape=(self.num_points, self.num_points)
+            )
+            self.A = A_sparse.toarray()
+        
+        return self.A
+        
     def solve(self, num_modes=6):
         """
         Solve the eigenvalue problem to find eigenmodes and eigenfrequencies.
@@ -144,63 +120,80 @@ class MembraneSolver:
         eigenvalues: The eigenvalues (related to frequencies)
         eigenvectors: The eigenvectors (eigenmodes)
         """
-        if not hasattr(self, 'A'):
-            raise ValueError("Matrix not built yet. Call build_matrix() first.")
-        
-        A_scaled = self.A / (self.h**2)
-        
-        # Eigenvalue problem
         if self.use_sparse:
-            eigenvalues, eigenvectors = sparse_linalg.eigsh(A_scaled, k=num_modes, which='SM')
+            from scipy.sparse.linalg import eigsh
+            # Use eigsh for symmetric matrices
+            eigenvalues, eigenvectors = eigsh(self.A, k=num_modes, which='SM')
         else:
-            eigenvalues, eigenvectors = np.linalg.eig(A_scaled)
-            
-            # Sort eigenvalues and corresponding eigenvectors
-            idx = eigenvalues.argsort()
-            eigenvalues = eigenvalues[idx]
-            eigenvectors = eigenvectors[:, idx]
-            
+            from scipy.linalg import eigh
+            # Use eigh for symmetric dense matrices
+            eigenvalues, eigenvectors = eigh(self.A)
+            # Keep only the first num_modes
             eigenvalues = eigenvalues[:num_modes]
-            
-            # Ensure real-valued eigenvectors by taking the real part
-            # and normalizing the eigenvectors
-            eigenvectors = eigenvectors[:, :num_modes].real
-            for i in range(num_modes):
-                eigenvectors[:, i] /= np.linalg.norm(eigenvectors[:, i])
+            eigenvectors = eigenvectors[:, :num_modes]
         
-        # K = -lambda^2
-        frequencies = np.sqrt(-eigenvalues)
-
-        self.eigenvalues = eigenvalues
-        self.eigenvectors = eigenvectors
-        self.frequencies = frequencies
+        # Eigenvalues for the laplace operator should be negative
+        # Sort by frequency (smallest absolute eigenvalue first)
+        idx = np.argsort(np.abs(eigenvalues))
+        self.eigenvalues = eigenvalues[idx]
+        self.eigenvectors = eigenvectors[:, idx]
         
-        return eigenvalues, eigenvectors
+        # Calculate frequencies
+        self.frequencies = np.sqrt(np.maximum(0, -self.eigenvalues))
         
-    def plot_mode(self, mode_idx, figsize=(8, 6)):
-        """Plot a specific eigenmode"""
-        if not hasattr(self, 'eigenvectors'):
-            raise ValueError("You need to call solve() before plotting")
-            
-        if self.shape == 'rectangle':
-            # For rectangle, we need to consider the aspect ratio
-            mode = self.eigenvectors[:, mode_idx].reshape(self.n, self.n)
-            
-            plt.figure(figsize=figsize)
-            # Set extent to match the physical dimensions
-            plt.imshow(mode, cmap='coolwarm', extent=[0, self.L, 0, 2*self.L])
-        else:
-            # For square
-            mode = self.eigenvectors[:, mode_idx].reshape(self.n, self.n)
-            
-            plt.figure(figsize=figsize)
-            plt.imshow(mode, cmap='coolwarm', extent=[0, self.L, 0, self.L])
+        return self.eigenvalues, self.eigenvectors
+    
+    def get_mode_grid(self, mode_idx=0):
+        """
+        Get the eigenmode as a 2D grid with zeros outside the domain.
         
-        plt.colorbar(label='Amplitude')
-        plt.title(f'Eigenmode {mode_idx+1}, Frequency: {self.frequencies[mode_idx]:.4f}')
-        plt.xlabel('x', fontsize=labelsize)
-        plt.ylabel('y', fontsize=labelsize)
+        Parameters:
+        mode_idx: Index of the eigenmode to retrieve
+        
+        Returns:
+        2D grid representation of the eigenmode
+        """
+        if self.eigenvectors is None:
+            self.solve()
+        
+        mode_grid = np.zeros((self.n, self.n))
+        mode_values = self.eigenvectors[:, mode_idx]
+        
+        mode_grid[self.mask] = mode_values
+        
+        return mode_grid
+    
+    def plot_mode(self, mode_idx=0, figsize=(10, 8)):
+        """
+        Plot an eigenmode of the membrane.
+        
+        Parameters:
+        mode_idx: Index of the eigenmode to plot
+        figsize: Figure size (width, height)
+        
+        Returns:
+        matplotlib figure
+        """
+        mode_grid = self.get_mode_grid(mode_idx)
+        
+        # Get coordinates for proper plotting
+        X, Y = np.meshgrid(self.x, self.y)
+        
+        # Create masked array for circular domain
+        if self.shape == 'circle':
+            mode_grid = np.ma.masked_array(mode_grid, ~self.mask)
+        
+        fig, ax = plt.subplots(figsize=figsize)
+        im = ax.pcolormesh(X, Y, mode_grid, cmap='viridis', shading='auto')
+        plt.colorbar(im, ax=ax, label='Amplitude')
+        ax.set_title(f'Eigenmode {mode_idx}, Frequency: {self.frequencies[mode_idx]:.4f}')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_aspect('equal')
         plt.tight_layout()
+        
+        return fig
+                
         
     def animate_mode(self, mode_idx, duration=5, fps=30, filename=None, figsize=(8, 8)):
         """
