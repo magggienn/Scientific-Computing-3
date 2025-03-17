@@ -18,6 +18,7 @@ class SolveDirectMethod:
         self.dx = self.x[1] - self.x[0]
         self.dy = self.y[1] - self.y[0]
 
+        # Mask to indicate the circle region
         self.mask = np.array([[xi**2 + yi**2 <= self.radius**2 for xi in self.x] for yi in self.y])
         self.num_points = np.sum(self.mask)
         self.indices = np.full((Ny, Nx), -1, dtype=int)
