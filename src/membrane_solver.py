@@ -25,8 +25,8 @@ sns.set(style="whitegrid")
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-LABELSIZE = 14
-TICKSIZE = 12
+LABELSIZE = 24
+TICKSIZE = 20
 
 class MembraneSolver:
     def __init__(self, n, shape='square', L=1.0, use_sparse=False):
@@ -137,17 +137,17 @@ class MembraneSolver:
             mode[self.mask] = self.eigenvectors[:, i]
             ax = axes[i]
             im = ax.imshow(mode, cmap='Spectral', origin='lower', extent=[0, self.L, 0, self.L])
-            ax.set_title(f'Mode {i+1}\nFreq: {self.frequencies[i]:.3f}')
+            ax.set_title(f'Mode {i+1}\nFreq: {self.frequencies[i]:.3f}',fontsize=LABELSIZE-4)
             cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
             if i % n_cols == 0:
-                ax.set_ylabel('y', fontsize=14)
+                ax.set_ylabel('y', fontsize=LABELSIZE)
             else:
-                cbar.set_label('Amplitude', fontsize=14)
+                cbar.set_label('Amplitude', fontsize=LABELSIZE)
 
             if i == num_modes - 1 or i == num_modes - 2:
-                ax.set_xlabel('x', fontsize=14)
-                ax.tick_params(labelbottom=True, labelsize=12)
+                ax.set_xlabel('x', fontsize=LABELSIZE)
+                ax.tick_params(labelbottom=True, labelsize=TICKSIZE)
 
         # Hide unused subplots
         for j in range(num_modes, n_rows * n_cols):

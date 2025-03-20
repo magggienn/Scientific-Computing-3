@@ -9,8 +9,8 @@ from matplotlib.lines import Line2D
 sns.set(style="whitegrid")
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 14
-TICKSIZE = 12
+LABELSIZE = 24
+TICKSIZE = 20
 
 def plot_eigenfrequencies_vs_L(num_modes=6):
     """Plot eigenfrequencies as a function of L for different shapes"""    

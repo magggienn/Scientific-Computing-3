@@ -6,8 +6,8 @@ import seaborn as sns
 sns.set(style="whitegrid")
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 14
-TICKSIZE = 12
+LABELSIZE = 24
+TICKSIZE = 20
 
 def plot_matrix_mask(matrix, title="Matrix Sparsity Pattern"):
     """
@@ -28,8 +28,8 @@ def plot_matrix_mask(matrix, title="Matrix Sparsity Pattern"):
     plt.spy(sparse_matrix, markersize=0.5, color='blue')
     
     plt.title(title, fontsize=16)
-    plt.xlabel("Column Index", fontsize=14)
-    plt.ylabel("Row Index", fontsize=14)
+    plt.xlabel("Column Index", fontsize=LABELSIZE)
+    plt.ylabel("Row Index", fontsize=LABELSIZE)
     plt.tight_layout()
     plt.savefig(f"figures/boundaries/{title.replace(' ', '_').lower()}.pdf")
     plt.show()
@@ -67,9 +67,9 @@ def plot_detailed_matrix_view(matrix, title="Matrix Values", max_size=50):
     # Add a colorbar
     plt.colorbar(im, label="Matrix Value")
     
-    plt.title(title, fontsize=16)
-    plt.xlabel("Column Index", fontsize=14)
-    plt.ylabel("Row Index", fontsize=14)
+    plt.title(title, fontsize=LABELSIZE)
+    plt.xlabel("Column Index", fontsize=LABELSIZE)
+    plt.ylabel("Row Index", fontsize=LABELSIZE)
     
     # Add grid lines to separate cells for small matrices
     if matrix_dense.shape[0] <= 20:

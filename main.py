@@ -15,9 +15,9 @@ plt.rc('font', family='serif')
 def solve_membrane():
     for shape in ['square','rectangle', 'circle']:
         solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
-        # solver.plot_modes()
+        solver.solve(num_modes=6)
+        solver.plot_modes()
         # visualize_matrix_structure(solver)
-        # solver.solve(num_modes=6)
         # for mode_idx in range(6):
         #     anim = solver.animate_mode(
         #         mode_idx=mode_idx, 
@@ -34,8 +34,6 @@ def solve_direct_method():
     diffusion.plot()
 
 if __name__ == "__main__":
-    # solve_membrane()
+    solve_membrane()
     # solve_direct_method()
-    plot_eigenfrequencies_vs_L()
-    
-
+    # plot_eigenfrequencies_vs_L()
