@@ -15,9 +15,9 @@ def solve_membrane():
         solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
         solver.solve(num_modes=6)
         print(f"\nShape: {shape}, First 6 frequencies: {solver.frequencies}")
-        # solver.plot_modes()
-        for mode_idx in range(6):
-            anim = solver.animate_mode(mode_idx=mode_idx, duration=5, fps=30, filename=f'animations/{shape}_mode_{mode_idx+1}.mp4')
+        solver.plot_modes()
+        # for mode_idx in range(6):
+        #     anim = solver.animate_mode(mode_idx=mode_idx, duration=5, fps=30, filename=f'animations/{shape}_mode_{mode_idx+1}.mp4')
         
         # solver.compare_performance()
 
@@ -28,7 +28,7 @@ def solve_direct_method():
     diffusion.plot()
 
 if __name__ == "__main__":
-    # solve_membrane()
-    solve_direct_method()
+    solve_membrane()
+    # solve_direct_method()
     # plot_eigenfrequencies_vs_L()
 
