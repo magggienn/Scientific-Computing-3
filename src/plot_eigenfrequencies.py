@@ -23,7 +23,6 @@ def plot_eigenfrequencies_vs_L(num_modes=6):
     
     # Calculate eigenfrequencies for each shape and L value
     for shape in shapes:
-        print(f"Computing eigenfrequencies for {shape}...")
         shape_freqs = []
         
         for L in L_values:
@@ -32,8 +31,8 @@ def plot_eigenfrequencies_vs_L(num_modes=6):
             shape_freqs.append(solver.frequencies)
         
         results[shape] = np.array(shape_freqs)
-        for mode in range(num_modes):
-                print(f"Mode {mode+1}: {results[shape][0, mode]:.4f}")
+        # for mode in range(num_modes):
+        #         print(f"Mode {mode+1}: {results[shape][0, mode]:.4f}")
     
     # Create the plot with a clear white background 
     plt.figure(figsize=(10, 6), facecolor='white')
