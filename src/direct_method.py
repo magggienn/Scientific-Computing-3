@@ -4,6 +4,9 @@ import scipy.sparse.linalg
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+LABELSIZE =28
+TICKSIZE = 26
+
 class SolveDirectMethod:
     '''
     Class that solves the diffusion equation using the direct method
@@ -18,6 +21,7 @@ class SolveDirectMethod:
         self.dx = self.x[1] - self.x[0]
         self.dy = self.y[1] - self.y[0]
 
+        # Mask to indicate the circle region
         self.mask = np.array([[xi**2 + yi**2 <= self.radius**2 for xi in self.x] for yi in self.y])
         self.num_points = np.sum(self.mask)
         self.indices = np.full((Ny, Nx), -1, dtype=int)
@@ -87,12 +91,29 @@ class SolveDirectMethod:
         '''
         Plots the solution
         '''
-        plt.figure(figsize=(6, 6))
-        plt.contourf(self.x, self.y, self.result, levels=50, cmap='Spectral')
-        plt.colorbar(label='Concentration')
-        plt.title('Steady-State Concentration Distribution')
-        plt.xlabel('x')
-        plt.ylabel('y')
+        plt.figure(figsize=(7, 6))
+        
+        # Plot the solution
+        contour = plt.contourf(self.x, self.y, self.result, levels=50, cmap='Spectral')
+        plt.colorbar(contour, label='Concentration')
+        
+        # Add the circle boundary
+        circle = plt.Circle((0, 0), self.radius, fill=False, color='black', linestyle='-', linewidth=0.5)
+        plt.gca().add_patch(circle)
+        
+        # Plot the source point
+        #plt.scatter(self.source_loc[0], self.source_loc[1], label='Source', s=5, color='pink', marker='x')
+        
+        # Set plot properties
+        #plt.title('Steady-State Concentration Distribution')
+        plt.xlabel('x', fontsize=LABELSIZE)
+        plt.ylabel('y', fontsize=LABELSIZE)
+        plt.xlim(-self.radius, self.radius)
+        plt.ylim(-self.radius, self.radius)
+        #plt.legend()
+        plt.tight_layout()
+        plt.tick_params(labelsize=TICKSIZE)
+        # Save and show
         plt.savefig(filename)
         plt.show()
 

@@ -13,272 +13,254 @@ string at various time steps.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import seaborn as sns
+import scipy.sparse
+import time
+from scipy.sparse.linalg import eigs
+from scipy.linalg import eigh
 import matplotlib.animation as animation
-from scipy.sparse import linalg as sparse_linalg
-from scipy.sparse import lil_matrix
+import os
 
-# Plotting parameters
-sns.set(style="whitegrid") 
-plt.rc('text', usetex=True) 
+sns.set(style="whitegrid")
+plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
-labelsize = 14
-ticksize = 14
-colors = sns.color_palette("Set2", 8)
+
+LABELSIZE = 14
+TICKSIZE = 12
 
 
 class MembraneSolver:
-    def __init__(self, n, L, shape, use_sparse=False, c=1, boundary_condition=0):
-        """
-        shape: 'square', 'rectangle', or 'circle'
-        L: Size parameter (side length for square, diameter for circle)
-        n: Number of grid points in each dimension- interior points - not including boundary points 
-        use_sparse (bool): Whether to use sparse matrix methods
-        """
-        self.n = n
-        self.L = L
+    def __init__(self, n, shape='square', L=1.0, use_sparse=False):
+        self.n = n  # Grid size
+        self.L = L  # Physical length
         self.shape = shape
         self.use_sparse = use_sparse
-        self.c = c
-        self.boundary_condition = boundary_condition
-        self.eigenvalues = None
-        self.eigenvectors = None
-        self.frequencies = None
+        self.dx = L / (n - 1)
         
-        # Grid spacing
-        # 0     h     2h    3h    ...  nh    L
-        # x₀ --- x₁ --- x₂ --- x₃ --- ... --- xₙ₊₁
-        # |_____|_____|_____|_____|_..._|_____|
-        #  seg1  seg2  seg3  seg4  ...  seg(n+1)
-        self.h = L / (n + 1)
+        self.x = np.linspace(0, L, n)
+        self.y = np.linspace(0, L, n)
+        self.mask = np.ones((n, n), dtype=bool)
         
-        self.x = np.linspace(0, L, n+2)[1:-1]  # Remove boundary points
-        self.y = np.linspace(0, L, n+2)[1:-1]
+        if shape == 'circle':
+            X, Y = np.meshgrid(self.x, self.y)
+            R = L / 2  # Circle radius
+            self.mask = (X - L/2) ** 2 + (Y - L/2) ** 2 <= R ** 2
+        elif shape == 'rectangle':
+            self.y = np.linspace(0, 2 * L, n)
+            # Update dx for rectangular grid
+            self.dx = L / (n - 1)  # x spacing
+            self.dy = (2 * L) / (n - 1)  # y spacing
+        else:  # square
+            self.dx = L / (n - 1)  # Uniform spacing
         
+        self.num_points = np.sum(self.mask)
+        self.indices = np.full((n, n), -1, dtype=int)
+        self.indices[self.mask] = np.arange(self.num_points)
         self.build_matrix()
-        
+    
     def build_matrix(self):
-        """Build the Laplacian matrix for the selected shape."""
-        if self.shape == 'square':
-            self.build_square_matrix()
-        elif self.shape == 'rectangle':
-            self.build_rectangle_matrix()
-        elif self.shape == 'circle':
-            self.build_circle_matrix()
-            
-    def build_square_matrix(self):
-        """Build the Laplacian matrix for a square membrane."""
+        """ Build the matrix for the eigenvalue problem """
         n = self.n
-        h = self.h
-        c = self.c
-        bc = self.boundary_condition
+        data, rows, cols = [], [], []
         
-        # Laplacian matrix
-        #     1
-        #   1-4 1
-        #     1        
-        if self.use_sparse:
-            from scipy.sparse import lil_matrix
-            A = lil_matrix((n**2, n**2))
-        else:
-            A = np.zeros((n**2, n**2))
-            
         for i in range(n):
             for j in range(n):
-                idx = i * n + j
-                A[idx, idx] = -4
-                if i > 0:
-                    A[idx, idx - n] = 1
-                if i < n - 1:
-                    A[idx, idx + n] = 1
-                if j > 0:
-                    A[idx, idx - 1] = 1
-                if j < n - 1:
-                    A[idx, idx + 1] = 1
-        self.A = A
-        return A 
-        
-    def build_rectangle_matrix(self):
-        """Build the Laplacian matrix for a rectangular membrane."""
-        n = self.n
-        h_x = self.L / (n + 1)
-        h_y = (2 * self.L) / (n + 1) # Grid spacing in y direction (twice as long)
-        
-        # Laplacian matrix       
-        if self.use_sparse:
-            A = lil_matrix((n**2, n**2))
-        else:
-            A = np.zeros((n**2, n**2))
-       
-        for i in range(n):
-            for j in range(n):
-                idx = i * n + j
-                 # Diagonal element (adjusted for different spacing in x and y)
-                A[idx, idx] = -2/h_x**2 - 2/h_y**2
-                
-                # Connect to neighbors
-                if i > 0:  # left
-                    A[idx, idx - n] = 1/h_x**2
-                if i < n - 1:  # right
-                    A[idx, idx + n] = 1/h_x**2
-                if j > 0:  # down
-                    A[idx, idx - 1] = 1/h_y**2
-                if j < n - 1:  # up
-                    A[idx, idx + 1] = 1/h_y**2
-        self.A = A
-        return A
+                if self.mask[i, j]:
+                    idx = self.indices[i, j]
                     
+                    # For rectangle, use dx^2 for x direction and dy^2 for y direction
+                    if self.shape == 'rectangle':
+                        dx2 = self.dx ** 2
+                        dy2 = self.dy ** 2
+                        
+                        # central coefficient depends on both dx and dy
+                        central_coef = -2/dx2 - 2/dy2
+                        data.append(central_coef)
+                        rows.append(idx)
+                        cols.append(idx)
+                        
+                        for di, dj, weight in [(-1, 0, 1/dx2), (1, 0, 1/dx2), 
+                                            (0, -1, 1/dy2), (0, 1, 1/dy2)]:
+                            ni, nj = i + di, j + dj
+                            if 0 <= ni < n and 0 <= nj < n and self.mask[ni, nj]:
+                                data.append(weight)
+                                rows.append(idx)
+                                cols.append(self.indices[ni, nj])
+                    else:
+                        dx2 = self.dx ** 2
+                        data.append(-4 / dx2)
+                        rows.append(idx)
+                        cols.append(idx)
+                        
+                        for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                            ni, nj = i + di, j + dj
+                            if 0 <= ni < n and 0 <= nj < n and self.mask[ni, nj]:
+                                data.append(1 / dx2)
+                                rows.append(idx)
+                                cols.append(self.indices[ni, nj])
+        
+        self.A = scipy.sparse.csr_matrix((data, (rows, cols)), shape=(self.num_points, self.num_points))
+        
     def solve(self, num_modes=6):
-        """
-        Solve the eigenvalue problem to find eigenmodes and eigenfrequencies.
-        
-        Returns:
-        eigenvalues: The eigenvalues (related to frequencies)
-        eigenvectors: The eigenvectors (eigenmodes)
-        """
-        if not hasattr(self, 'A'):
-            raise ValueError("Matrix not built yet. Call build_matrix() first.")
-        
-        A_scaled = self.A / (self.h**2)
-        
-        # Eigenvalue problem
+        """ Solve the eigenvalue problem """
         if self.use_sparse:
-            eigenvalues, eigenvectors = sparse_linalg.eigsh(A_scaled, k=num_modes, which='SM')
+            eigenvalues, eigenvectors = eigs(self.A, k=num_modes, which='SM', tol=1e-8)
         else:
-            eigenvalues, eigenvectors = np.linalg.eig(A_scaled)
-            
-            # Sort eigenvalues and corresponding eigenvectors
-            idx = eigenvalues.argsort()
-            eigenvalues = eigenvalues[idx]
-            eigenvectors = eigenvectors[:, idx]
-            
-            eigenvalues = eigenvalues[:num_modes]
-            
-            # Ensure real-valued eigenvectors by taking the real part
-            # and normalizing the eigenvectors
-            eigenvectors = eigenvectors[:, :num_modes].real
-            for i in range(num_modes):
-                eigenvectors[:, i] /= np.linalg.norm(eigenvectors[:, i])
+            eigenvalues, eigenvectors = eigh(self.A.toarray())
+            eigenvalues, eigenvectors = eigenvalues[:num_modes], eigenvectors[:, :num_modes]
         
-        # K = -lambda^2
-        frequencies = np.sqrt(-eigenvalues)
+        idx = np.argsort(np.abs(eigenvalues))
+        self.eigenvalues, self.eigenvectors = eigenvalues[idx], eigenvectors[:, idx]
+        self.frequencies = np.sqrt(np.maximum(0, -self.eigenvalues))
+    
+    def plot_modes(self, num_modes=6):
+        """ Plot the first num_modes eigenmodes """
+        n_cols = 2
+        n_rows = int(np.ceil(num_modes / n_cols))
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 5*n_rows), sharex=True, sharey=True)
+        axes = axes.flatten()
+        
+        for i in range(num_modes):
+            mode = np.zeros((self.n, self.n))
+            mode[self.mask] = self.eigenvectors[:, i]
+            ax = axes[i]
+            im = ax.imshow(mode, cmap='Spectral', origin='lower', extent=[0, self.L, 0, self.L])
+            ax.set_title(f'Mode {i+1}\nFreq: {self.frequencies[i]:.3f}')
+            cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            if i % n_cols == 0:
+                ax.set_ylabel('y', fontsize=LABELSIZE)
+            else:
+                cbar.set_label('Amplitude', fontsize=LABELSIZE)
 
-        self.eigenvalues = eigenvalues
-        self.eigenvectors = eigenvectors
-        self.frequencies = frequencies
+            if i == num_modes - 1 or i == num_modes - 2:
+                ax.set_xlabel('x', fontsize=LABELSIZE)
+                ax.tick_params(labelbottom=True, labelsize=TICKSIZE)
         
-        return eigenvalues, eigenvectors
-        
-    def plot_mode(self, mode_idx, figsize=(8, 6)):
-        """Plot a specific eigenmode"""
-        if not hasattr(self, 'eigenvectors'):
-            raise ValueError("You need to call solve() before plotting")
-            
-        if self.shape == 'rectangle':
-            # For rectangle, we need to consider the aspect ratio
-            mode = self.eigenvectors[:, mode_idx].reshape(self.n, self.n)
-            
-            plt.figure(figsize=figsize)
-            # Set extent to match the physical dimensions
-            plt.imshow(mode, cmap='coolwarm', extent=[0, self.L, 0, 2*self.L])
-        else:
-            # For square
-            mode = self.eigenvectors[:, mode_idx].reshape(self.n, self.n)
-            
-            plt.figure(figsize=figsize)
-            plt.imshow(mode, cmap='coolwarm', extent=[0, self.L, 0, self.L])
-        
-        plt.colorbar(label='Amplitude')
-        plt.title(f'Eigenmode {mode_idx+1}, Frequency: {self.frequencies[mode_idx]:.4f}')
-        plt.xlabel('x', fontsize=labelsize)
-        plt.ylabel('y', fontsize=labelsize)
+        # Hide unused subplots
+        for j in range(num_modes, n_rows * n_cols):
+            if j < len(axes):
+                axes[j].set_visible(False)
+                
         plt.tight_layout()
+        plt.savefig(f'figures/{self.shape}_modes.pdf')    
+        plt.show()
+    
+    def compare_performance(self):
+        """ Compare the performance of dense and sparse solvers """
+        start_dense = time.time()
+        eigh(self.A.toarray())
+        end_dense = time.time()
         
-    def animate_mode(self, mode_idx, duration=5, fps=30, filename=None, figsize=(8, 8)):
-        """
-        Animate a specific eigenmode showing its vibration over time.
+        start_sparse = time.time()
+        eigs(self.A, k=6, which='SM', tol=1e-8)
+        end_sparse = time.time()
         
-        Args:
-            mode_idx: Index of the mode to animate
-            duration: Duration of the animation in seconds
-            fps: Frames per second
-            filename: If provided, the animation will be saved to this file
-            figsize: Figure size (width, height) in inches
-        """
-        if not hasattr(self, 'eigenvectors') or not hasattr(self, 'frequencies'):
-            raise ValueError("You need to call solve() before animating")
-        
-        # Calculate total number of frames
-        num_frames = duration * fps
-        
-        # Get the frequency for this mode
+        print(f"Dense solver time: {end_dense - start_dense:.4f}s")
+        print(f"Sparse solver time: {end_sparse - start_sparse:.4f}s")
+    
+    def animate_mode(self, mode_idx=0, duration=10, fps=30, filename=None):
+        '''
+        Animate a specific eigenmode of the membrane
+        '''
+        mode_vector = self.eigenvectors[:, mode_idx]
         frequency = self.frequencies[mode_idx]
         
+        mode = np.zeros((self.n, self.n))
+        mode[self.mask] = mode_vector
+        
+        # Calculate total number of frames
+        num_frames = int(duration * fps)
+        
+        # Time points for the animation
+        t_max = 2 * np.pi / frequency  # One full period
+        times = np.linspace(0, duration, num_frames)
+        
         # Create figure and initial plot
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots(figsize=(8, 8))
         
-        # Prepare the mode data
-        if self.shape == 'circle':
-            # For circle, map the eigenvector back to 2D grid
-            mode_2d = np.zeros((self.n, self.n))
-            for i in range(self.n):
-                for j in range(self.n):
-                    if self.inside_points[i, j] >= 0:
-                        mode_2d[i, j] = self.eigenvectors[self.inside_points[i, j], mode_idx]
-            mode = mode_2d
-            extent = [0, self.L, 0, self.L]
-        else:
-            # For square and rectangle
-            mode = self.eigenvectors[:, mode_idx].reshape(self.n, self.n)
-            if self.shape == 'square':
-                extent = [0, self.L, 0, self.L]
-            else:  # rectangle
-                extent = [0, self.L, 0, 2*self.L]
+        # Find the maximum amplitude for consistent color scaling
+        max_amp = np.max(np.abs(mode))
         
-        # Normalize the mode for better visualization
-        mode = mode / np.max(np.abs(mode))
+        # Initial plot
+        X, Y = np.meshgrid(self.x, self.y) if self.shape != 'rectangle' else np.meshgrid(self.x, self.y)
         
-        # Find min/max values for consistent color scale
-        vmax = np.max(np.abs(mode))
-        vmin = -vmax
+        # For 3D visualization
+        ax = fig.add_subplot(111, projection='3d')
+        ax.set_xlabel('X', fontsize=LABELSIZE)
+        ax.set_ylabel('Y', fontsize=LABELSIZE)
+        ax.set_zlabel('Amplitude', fontsize=LABELSIZE)
+        ax.set_title(f'Eigenmode {mode_idx+1} Animation (Freq: {frequency:.3f})', fontsize=LABELSIZE)
         
-        # Create initial plot
-        im = ax.imshow(mode, cmap='coolwarm', origin='lower', 
-                    extent=extent, vmin=vmin, vmax=vmax)
+        # Create the initial surface plot
+        surf = ax.plot_surface(X, Y, np.zeros_like(mode), cmap='Spectral', 
+                               vmin=-max_amp, vmax=max_amp, edgecolor='none')
         
-        # Add colorbar and labels
-        cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-        cbar.set_label('Amplitude', fontsize=14)
-        ax.set_xlabel('x', fontsize=14)
-        ax.set_ylabel('y', fontsize=14)
-        title_obj = ax.set_title(f'Eigenmode {mode_idx+1}, Frequency: {frequency:.4f}', fontsize=14)
+        # Add a color bar
+        cbar = fig.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
+        cbar.set_label('Amplitude', fontsize=LABELSIZE)
+        
+        # Set axis limits
+        ax.set_xlim(0, self.L)
+        ax.set_ylim(0, 2*self.L if self.shape == 'rectangle' else self.L)
+        ax.set_zlim(-max_amp, max_amp)
         
         def update(frame):
-            """Update function for the animation."""
-            # Calculate time point
-            t = frame / fps
+            ax.clear()
             
-            # Calculate amplitude factor for this time point
-            # We use cos to make the membrane oscillate
-            amplitude = np.cos(2 * np.pi * frequency * t)
+            # Calculate the displacement at this time
+            t = times[frame]
+            displacement = mode * np.cos(frequency * t)
             
-            # Apply amplitude to the mode
-            displayed_mode = amplitude * mode
+            # Update the surface
+            surf = ax.plot_surface(X, Y, displacement, cmap='Spectral', 
+                                  vmin=-max_amp, vmax=max_amp, edgecolor='none')
             
-            # Update the plot
-            im.set_array(displayed_mode)
-            title_obj.set_text(f'Eigenmode {mode_idx+1}, Frequency: {frequency:.4f}, Time: {t:.2f}s')
-            return [im, title_obj]
+            # Reset labels and title
+            ax.set_xlabel('X', fontsize=LABELSIZE)
+            ax.set_ylabel('Y', fontsize=LABELSIZE)
+            ax.set_zlabel('Amplitude', fontsize=LABELSIZE)
+            ax.set_title(f'Eigenmode {mode_idx+1} Animation (Freq: {frequency:.3f})', fontsize=LABELSIZE)
+            
+            # Set axis limits
+            ax.set_xlim(0, self.L)
+            ax.set_ylim(0, 2*self.L if self.shape == 'rectangle' else self.L)
+            ax.set_zlim(-max_amp, max_amp)
+            
+            return [surf]
         
         # Create animation
-        anim = FuncAnimation(fig, update, frames=num_frames,
-                            interval=1000/fps, blit=False)
+        anim = animation.FuncAnimation(fig, update, frames=num_frames, interval=1000/fps, blit=False)
         
-        # Save animation if filename is provided
         if filename:
-            anim.save(filename, writer='ffmpeg', fps=fps)
+            # Make sure the animations directory exists
+            os.makedirs('animations', exist_ok=True)
+            
+            # Determine the writer based on the file extension
+            if filename.endswith('.mp4'):
+                writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
+            elif filename.endswith('.gif'):
+                writer = animation.PillowWriter(fps=fps)
+            else:
+                filename = f'animations/{self.shape}_mode_{mode_idx+1}.mp4'
+                writer = animation.FFMpegWriter(fps=fps, bitrate=1800)
+            
+            anim.save(filename, writer=writer)
             print(f"Animation saved to {filename}")
         
-        plt.close() if filename else plt.tight_layout()
+        plt.tight_layout()
+        plt.show()
+        
         return anim
+    
+    def plot_L(self):
+        self.frequencies 
+    
+    
+if __name__ == "__main__":
+    # Test the solver for different shapes
+    for shape in ['square', 'rectangle', 'circle']:
+        solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
+        solver.solve(num_modes=6)
+        print(f"\nShape: {shape}, First 6 frequencies: {solver.frequencies}")
+        solver.plot_modes()
+        solver.compare_performance()
