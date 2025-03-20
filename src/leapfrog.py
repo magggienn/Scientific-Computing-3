@@ -70,13 +70,17 @@ class LeapfrogHarmonicOscillator:
         v_vals = np.zeros(num_steps)
 
         x_vals[0] = x0
-        v_half = v0 + 0.5 * self.dt * self.force(x0, 0) / self.m  # Initial half-step velocity
+
+        # Initial half-step velocity
+        v_half = v0 + 0.5 * self.dt * self.force(x0, 0) / self.m
 
         for i in range(1, num_steps):
             t = t_vals[i-1]
             x_vals[i] = x_vals[i-1] + self.dt * v_half
             v_half += self.dt * self.force(x_vals[i], t) / self.m
-            v_vals[i] = v_half - 0.5 * self.dt * self.force(x_vals[i], t) / self.m  # Approximate v at full step
+
+            # Approximate v at full step
+            v_vals[i] = v_half - 0.5 * self.dt * self.force(x_vals[i], t) / self.m
 
         return t_vals, x_vals, v_vals
 
@@ -171,7 +175,8 @@ def compare_energy_conservation(x0, v0, k, dt, t_max, F_ext=None):
     t_vals, x_vals, v_vals = lf_oscillator.integrate(x0, v0)
     energy_leapfrog = 0.5 * k * x_vals**2 + 0.5 * v_vals**2
 
-    sol = solve_ivp(harmonic_oscillator, [0, t_max], [x0, v0], args=(k, 1, F_ext), t_eval=t_vals, method='RK45')
+    sol = solve_ivp(harmonic_oscillator, [0, t_max], [x0, v0], args=(k, 1, F_ext),
+                    t_eval=t_vals, method='RK45')
     energy_rk45 = 0.5 * k * sol.y[0]**2 + 0.5 * sol.y[1]**2
 
     plt.figure(figsize=(8, 5))
@@ -187,7 +192,6 @@ def compare_energy_conservation(x0, v0, k, dt, t_max, F_ext=None):
 def calculate_natural_frequency(k, m=1.0):
     """Calculates the natural frequency of the oscillator."""
     return (1 / (2 * np.pi)) * np.sqrt(k / m)
-
 
 
 def main():
