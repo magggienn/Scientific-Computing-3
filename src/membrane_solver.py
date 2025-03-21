@@ -166,18 +166,41 @@ class MembraneSolver:
         print(f"Saved: {filename}") 
         plt.show()
         
-    def compare_performance(self):
-        """ Compare the performance of dense and sparse solvers """
-        start_dense = time.time()
-        eigh(self.A.toarray())
-        end_dense = time.time()
+    def compare_performance(self, num_runs=100, num_modes=6):
+        """ 
+        Compare the performance of dense and sparse solver
+        """
+        dense_times = []
+        sparse_times = []
         
-        start_sparse = time.time()
-        eigs(self.A, k=6, which='SM', tol=1e-8)
-        end_sparse = time.time()
+        for i in range(num_runs):
+            # Dense solver timing
+            start_dense = time.time()
+            eigenvalues, eigenvectors = eigh(self.A.toarray())
+            eigenvalues, eigenvectors = eigenvalues[:num_modes], eigenvectors[:, :num_modes]
+            end_dense = time.time()
+            dense_times.append(end_dense - start_dense)
+            
+            # Sparse solver timing 
+            start_sparse = time.time()
+            eigenvalues, eigenvectors = eigs(self.A, k=num_modes, which='SM', tol=1e-8)
+            end_sparse = time.time()
+            sparse_times.append(end_sparse - start_sparse)
         
-        print(f"Dense solver time: {end_dense - start_dense:.4f}s")
-        print(f"Sparse solver time: {end_sparse - start_sparse:.4f}s")
+        # Mean and std
+        dense_mean = np.mean(dense_times)
+        dense_std = np.std(dense_times, ddof=1)
+        sparse_mean = np.mean(sparse_times)
+        sparse_std = np.std(sparse_times, ddof=1)
+        
+        print(f"Dense solver time: {dense_mean:.4f}s ± {dense_std:.4f}s")
+        print(f"Sparse solver time: {sparse_mean:.4f}s ± {sparse_std:.4f}s")
+        print(f"Speedup factor: {dense_mean/sparse_mean:.2f}x")
+    
+        dense_stats = {'mean': dense_mean, 'std': dense_std, 'measurements': dense_times}
+        sparse_stats = {'mean': sparse_mean, 'std': sparse_std, 'measurements': sparse_times}
+        
+        return dense_stats, sparse_stats
     
     def animate_mode(self, mode_idx=0, duration=10, fps=30, filename=None):
         '''
@@ -275,11 +298,3 @@ class MembraneSolver:
  
     
     
-# if __name__ == "__main__":
-#     # Test the solver for different shapes
-#     for shape in ['square', 'rectangle', 'circle']:
-#         solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
-#         solver.solve(num_modes=6)
-#         print(f"\nShape: {shape}, First 6 frequencies: {solver.frequencies}")
-#         solver.plot_modes()
-#         solver.compare_performance()
