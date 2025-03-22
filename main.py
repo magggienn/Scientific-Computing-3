@@ -35,7 +35,6 @@ def solve_membrane():
 def solve_direct_method():
     diffusion = SolveDirectMethod()
     diffusion.solve()
-    #diffusion.animate()
     diffusion.plot()
 
 if __name__ == "__main__":
