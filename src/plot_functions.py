@@ -123,11 +123,11 @@ def plot_combined_performance(results_dict, n_value, save=True):
     
     ax.set_xlabel('Membrane Shape', fontsize=LABELSIZE)
     ax.set_ylabel('Execution Time (s)', fontsize=LABELSIZE)
-    ax.set_title(f'Performance Comparison by Shape (n={n_value})', fontsize=LABELSIZE)
+    #ax.set_title(f'Performance Comparison by Shape (n={n_value})', fontsize=LABELSIZE)
     ax.set_xticks(x_positions)
     ax.set_xticklabels([s.capitalize() for s in shapes], fontsize=TICKSIZE)
     ax.tick_params(axis='y', labelsize=TICKSIZE)
-    ax.legend(fontsize=LABELSIZE-4)
+    ax.legend(fontsize=LABELSIZE-6, loc='center left')
     
     y_max = max(max(dense_means) + max(dense_stds), max(sparse_means) + max(sparse_stds)) * 1.2
     ax.set_ylim(0, y_max)
@@ -144,14 +144,13 @@ def plot_combined_performance(results_dict, n_value, save=True):
                f'{mean:.4f}s\n±{std:.4f}s', 
                ha='center', va='bottom', fontsize=TICKSIZE-4)
     
-    # Display speedup values with fancy styled boxes
     speedup_color = colors[3]  
-    speedup_x_offset = 0.224
+    speedup_x_offset = 0.223
     for i, shape in enumerate(shapes):
         speedup = results_dict[shape]['dense']['mean'] / results_dict[shape]['sparse']['mean']
         
-        # Create text with styled box
-        text = ax.text(i + speedup_x_offset, y_max * 0.78, f'Speedup: {speedup:.2f}x', 
+        # Create text with styled box to show speedup
+        text = ax.text(i + speedup_x_offset, y_max * 0.77, f'Speedup: {speedup:.2f}x', 
                 ha='center', va='center', fontsize=TICKSIZE-4,
                 bbox=dict(
                     boxstyle="round,pad=0.4,rounding_size=0.5",

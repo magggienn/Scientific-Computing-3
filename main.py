@@ -41,4 +41,4 @@ def solve_direct_method():
 if __name__ == "__main__":
     solve_membrane()
     # solve_direct_method()
-    plot_eigenfrequencies_vs_L()
+    # plot_eigenfrequencies_vs_L()
