@@ -11,8 +11,8 @@ sns.set(style="whitegrid")
 colors = sns.color_palette("Set2", 4)
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 24
-TICKSIZE = 20
+LABELSIZE = 29 #24
+TICKSIZE = 25 #20
 
 def plot_eigenfrequencies_vs_L(num_modes=6):
     """Plot eigenfrequencies as a function of L for different shapes."""    
@@ -103,7 +103,7 @@ def plot_eigenfrequencies_vs_L(num_modes=6):
 
 def plot_combined_performance(results_dict, n_value, save=True):
     """Create bar chart comparing performance between dense and sparse matrices."""
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ax = plt.subplots(figsize=(10, 6), facecolor='white')
     
     bar_width = 0.35
     shapes = list(results_dict.keys())
@@ -146,13 +146,13 @@ def plot_combined_performance(results_dict, n_value, save=True):
     
     # Display speedup values with fancy styled boxes
     speedup_color = colors[3]  
-    speedup_x_offset = 0.225
+    speedup_x_offset = 0.224
     for i, shape in enumerate(shapes):
         speedup = results_dict[shape]['dense']['mean'] / results_dict[shape]['sparse']['mean']
         
         # Create text with styled box
-        text = ax.text(i + speedup_x_offset, y_max * 0.85, f'Speedup: {speedup:.2f}x', 
-                ha='center', va='center', fontsize=TICKSIZE-2,
+        text = ax.text(i + speedup_x_offset, y_max * 0.78, f'Speedup: {speedup:.2f}x', 
+                ha='center', va='center', fontsize=TICKSIZE-4,
                 bbox=dict(
                     boxstyle="round,pad=0.4,rounding_size=0.5",
                     facecolor=speedup_color,
