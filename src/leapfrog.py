@@ -20,6 +20,15 @@ from scipy.integrate import solve_ivp
 from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 
+import os
+
+SHOW = True
+
+# Global path for saving figures
+FIGURE_PATH = '../figures/frog/'
+
+# Ensure the directory exists
+os.makedirs(FIGURE_PATH, exist_ok=True)
 
 # Global settings
 plt.rc('text', usetex=True)
@@ -103,39 +112,37 @@ class LeapfrogHarmonicOscillator:
             v0: Initial velocity (float)
             ks: List of spring constants to compare (list of floats)
         """
-        factor = 1.5
+        factor = 0.8
 
-        plt.figure(figsize=(10, 10))
+        fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
-        # Position vs Time
-        plt.subplot(2, 1, 1)  # Stack plots vertically
         for i, k in enumerate(ks):
             self.k = k
             t_vals, x_vals, v_vals = self.integrate(x0, v0)
-            plt.plot(t_vals, x_vals, label=f'$k={k}$', linewidth=2)
 
-        plt.title(r"Position vs Time", fontsize=LABELSIZE * factor)
-        plt.xlabel(r"Time", fontsize=LABELSIZE * factor)
-        plt.ylabel(r"Position", fontsize=LABELSIZE * factor)
-        plt.xticks(fontsize=TICKSIZE * factor)
-        plt.yticks(fontsize=TICKSIZE * factor)
-        plt.legend(fontsize=(TICKSIZE - 2) * factor)
+            # Position vs Time
+            axs[0].plot(t_vals, x_vals, label=f'$k={k}$', linewidth=2)
+            # Velocity vs Time
+            axs[1].plot(t_vals, v_vals, label=f'$k={k}$', linewidth=2)
 
-        # Velocity vs Time
-        plt.subplot(2, 1, 2)
-        for i, k in enumerate(ks):
-            self.k = k
-            t_vals, x_vals, v_vals = self.integrate(x0, v0)
-            plt.plot(t_vals, v_vals, label=f'$k={k}$', linewidth=2)
+        # Formatting
+        axs[0].set_ylabel("Position", fontsize=LABELSIZE * factor)
+        axs[1].set_ylabel("Velocity", fontsize=LABELSIZE * factor)
+        axs[1].set_xlabel("Time", fontsize=LABELSIZE * factor)
 
-        plt.title(r"Velocity vs Time", fontsize=LABELSIZE * factor)
-        plt.xlabel(r"Time", fontsize=LABELSIZE * factor)
-        plt.ylabel(r"Velocity", fontsize=LABELSIZE * factor)
-        plt.xticks(fontsize=TICKSIZE * factor)
-        plt.yticks(fontsize=TICKSIZE * factor)
-        plt.legend(fontsize=(TICKSIZE - 2) * factor)
+        for ax in axs:
+            ax.tick_params(axis='both', labelsize=TICKSIZE * factor)
+
+        # Move legend outside
+        axs[0].legend(fontsize=(TICKSIZE - 2) * factor, loc='upper left', bbox_to_anchor=(1.05, 1))
+        axs[1].legend(fontsize=(TICKSIZE - 2) * factor, loc='upper left', bbox_to_anchor=(1.05, 1))
 
         plt.tight_layout()
+
+        # Save the figure
+        plt.savefig(os.path.join(FIGURE_PATH, 'frog_position_velocity.pdf'), dpi=300, bbox_inches="tight")
+        if SHOW is not True:
+            plt.close()
         plt.show()
 
     def plot_phase_space(self, x0, v0, frequencies, rf):
@@ -166,11 +173,15 @@ class LeapfrogHarmonicOscillator:
         # Configure labels, title, and legend with global font settings
         plt.xlabel(r"Position", fontsize=LABELSIZE)
         plt.ylabel(r"Velocity", fontsize=LABELSIZE)
-        plt.title(r"Phase Space Plot", fontsize=LABELSIZE)
         plt.xticks(fontsize=TICKSIZE)
         plt.yticks(fontsize=TICKSIZE)
         plt.legend(fontsize=TICKSIZE - 2)
 
+        # Save the figure
+        fs = '_'.join([str(round(el / rf, 2)) for el in frequencies])
+        plt.savefig(os.path.join(FIGURE_PATH, f'phase_space_plot_{fs}.pdf'), dpi=300)
+        if SHOW is not True:
+            plt.close()
         plt.show()
 
 
@@ -214,18 +225,25 @@ def compare_energy_conservation(x0, v0, k, dt, t_max, F_ext=None):
                     t_eval=t_vals, method='RK45')
     energy_rk45 = 0.5 * k * sol.y[0]**2 + 0.5 * sol.y[1]**2
 
-    plt.figure(figsize=(12, 8))
-    plt.plot(t_vals, energy_leapfrog, label=r'Leapfrog', linewidth=2)
-    plt.plot(t_vals, energy_rk45, label=r'RK45', linewidth=2)
+    plt.figure(figsize=(14, 6))
+    plt.plot(t_vals, energy_leapfrog, label=r'Leapfrog', linewidth=3)
+    plt.plot(t_vals, energy_rk45, label=r'RK45', linewidth=3)
 
     # Configure labels, title, and legend with global font settings
     plt.xlabel(r"Time", fontsize=LABELSIZE)
     plt.ylabel(r"Total Energy", fontsize=LABELSIZE)
-    plt.title(r"Energy Conservation Comparison", fontsize=LABELSIZE)
     plt.xticks(fontsize=TICKSIZE)
     plt.yticks(fontsize=TICKSIZE)
     plt.legend(fontsize=TICKSIZE - 2)
 
+    # Adjust layout: More space at bottom, less at top
+    plt.tight_layout()
+    plt.subplots_adjust(bottom=0.15, top=0.8)
+
+    # Save the figure
+    plt.savefig(os.path.join(FIGURE_PATH, 'frog_energy_conservation.pdf'), dpi=300, bbox_inches="tight")
+    if SHOW is not True:
+        plt.close()
     plt.show()
 
 
@@ -258,6 +276,51 @@ def compare_energy_growth(x0, v0, k, dt, t_max, f_drive):
     plt.show()
 
 
+def plot_phase_space_comparison(x0, v0, frequencies_list, rf, k=1.0, dt=0.001, t_max_list=[10, 50]):
+    """
+    Plots two phase space diagrams side by side for different frequency sets.
+
+    Args:
+        x0: Initial position (float)
+        v0: Initial velocity (float)
+        frequencies_list: List of lists of frequencies for each subplot.
+        rf: Reference frequency for normalization.
+        k: Spring constant (default=1.0).
+        dt: Time step (default=0.001).
+        t_max_list: List containing t_max values for each subplot (default=[10, 50]).
+    """
+    fig, axs = plt.subplots(1, 2, figsize=(14, 6))  # Removed `sharey=True`
+
+    for ax, frequencies, t_max in zip(axs, frequencies_list, t_max_list):
+        lf_oscillator = LeapfrogHarmonicOscillator(k=k, dt=dt, t_max=t_max)
+
+        for f in frequencies:
+            lf_oscillator.F_ext = lambda t: np.sin(2 * np.pi * f * t)
+            _, x_vals, v_vals = lf_oscillator.integrate(x0, v0)
+
+            # Plot phase space trajectory
+            line, = ax.plot(x_vals, v_vals, label=f'f={round(f / rf, 2)} * ' + r"$f_{res}$", linewidth=3)
+
+            line_color = line.get_color()
+
+            # Add arrows to show direction
+            for i in range(0, len(x_vals) - 1, len(x_vals) // 10):
+                ax.arrow(x_vals[i], v_vals[i], x_vals[i + 1] - x_vals[i], v_vals[i + 1] - v_vals[i],
+                         head_width=0.15, head_length=0.12, fc=line_color, ec=line_color)
+
+        ax.set_xlabel("Position", fontsize=LABELSIZE)
+        ax.tick_params(axis='both', labelsize=TICKSIZE)
+        ax.legend(fontsize=TICKSIZE - 2)
+
+    axs[0].set_ylabel("Velocity", fontsize=LABELSIZE)  # Keep y-label only for first plot
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(FIGURE_PATH, 'phase_space_comparison.pdf'), dpi=300)
+    if SHOW is not True:
+        plt.close()
+    plt.show()
+
+
 def main():
 
     def p1():
@@ -265,29 +328,16 @@ def main():
         dt = 0.001
         t_max = 20
         lf_oscillator = LeapfrogHarmonicOscillator(k=k, dt=dt, t_max=t_max)
-        # lf_oscillator.plot_results(x0=1.0, v0=0.0, ks=[0.5, 1.0, 2.0])
+        lf_oscillator.plot_results(x0=1.0, v0=0.0, ks=[0.5, 1.0, 2.0])
         compare_energy_conservation(x0=1.0, v0=0.0, k=1.0, dt=0.01, t_max=50)
 
+    p1()
+
+
     def p2():
-        # reinitialisation with driving force
-        k = 1.0
-        dt = 0.001
-        t_max = 10
-        lf_oscillator = LeapfrogHarmonicOscillator(k=k, dt=dt, t_max=t_max)
-
-        cf = calculate_natural_frequency(k)
-
-        # Phase space plot with driving force close to the natural frequency of the oscillator
-        lf_oscillator.plot_phase_space(x0=1.0, v0=0.0,
-                                       frequencies=[.4 * cf, cf, 1.6 * cf], rf=cf)
-
-        k = 1.0
-        dt = 0.001
-        t_max = 50
-        lf_oscillator = LeapfrogHarmonicOscillator(k=k, dt=dt, t_max=t_max)
-        lf_oscillator.plot_phase_space(x0=1.0, v0=0.0,
-                                       frequencies=[cf], rf=cf)
-
+        # Replace the two separate calls with the new function:
+        cf = calculate_natural_frequency(k=1.0)
+        plot_phase_space_comparison(x0=1.0, v0=0.0, frequencies_list=[[0.4 * cf, cf, 1.6 * cf], [cf]], rf=cf)
 
     p2()
 
