@@ -6,17 +6,19 @@ import os
 import seaborn as sns
 import scipy.sparse
 from src.plot_functions import plot_eigenfrequencies_vs_L, plot_combined_performance
-from src.plot_matrix_M import visualize_matrix_structure
+from src.plot_matrix_M import visualize_all_matrices_in_one_row, visualize_matrix_structure
 
 sns.set(style="whitegrid")
 plt.rc('text')
 plt.rc('font', family='serif')
 
 def solve_membrane():
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+    shapes = ['square', 'rectangle', 'circle']
+    
     results = {}
-    for shape in ['square','rectangle', 'circle']:
+    for shape in ['square', 'rectangle', 'circle']:
         solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
-
         # Solve to compare performance sparse and not sparse
         dense_stats, sparse_stats = solver.compare_performance()
         results[shape] = {'dense': dense_stats, 'sparse': sparse_stats}

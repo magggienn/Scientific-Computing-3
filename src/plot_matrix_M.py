@@ -2,110 +2,71 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.sparse
 import seaborn as sns
+from src.membrane_solver import MembraneSolver
 
 sns.set(style="whitegrid")
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 24
-TICKSIZE = 20
+LABELSIZE = 40
+TICKSIZE = 12
 
-def plot_matrix_mask(matrix, title="Matrix Sparsity Pattern"):
+def visualize_matrix_structure(solver):
     """
-    Plot the mask (sparsity pattern) of a matrix.
+    Visualizes the matrix structure for a single membrane shape
     """
-    plt.figure(figsize=(10, 8))
+    matrix = solver.A.toarray()
+    size = min(50, matrix.shape[0])
+    matrix_subset = matrix[:size, :size]
     
-    # Convert to sparse matrix if it's a dense array
-    if isinstance(matrix, np.ndarray):
-        sparse_matrix = scipy.sparse.csr_matrix(matrix)
-    else:
-        sparse_matrix = matrix.copy()
+    plt.figure(figsize=(6, 5))
+    plt.title(f"{solver.shape.capitalize()} Membrane Matrix", fontsize=LABELSIZE)
+    
+    # Create heatmap and capture the returned mappable object that contains the colorbar info
+    heatmap = sns.heatmap(matrix_subset, cmap='Spectral', center=0)
+    
+    # Get and customize the colorbar
+    cbar = heatmap.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=TICKSIZE+10) 
+    
+    plt.xlabel("Column Index", fontsize=LABELSIZE)
+    plt.ylabel("Row Index", fontsize=LABELSIZE)
+    plt.xticks(fontsize=TICKSIZE)
+    plt.yticks(fontsize=TICKSIZE)
+    
+    filename = f"figures/boundaries/{solver.shape}_membrane_matrix_values.pdf"
+    plt.savefig(filename, bbox_inches='tight')
+    plt.close()
+
+def visualize_all_matrices_in_one_row():
+    """
+    Creates a single figure with all three membrane shapes side by side in one row
+    """
+    shapes = ['square', 'rectangle', 'circle']
+    solvers = {shape: MembraneSolver(n=30, shape=shape, use_sparse=True) for shape in shapes}
+    
+    for shape, solver in solvers.items():
+        solver.solve(num_modes=6)
+    
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5))
         
-    if not isinstance(sparse_matrix, scipy.sparse.coo_matrix):
-        sparse_matrix = sparse_matrix.tocoo()
+    for i, shape in enumerate(shapes):
+        matrix = solvers[shape].A.toarray()
+        size = min(50, matrix.shape[0])
+        matrix_subset = matrix[:size, :size]
+        
+        ax = axes[i]
+        heatmap = sns.heatmap(matrix_subset, cmap='Spectral', center=0, ax=ax)
+        
+        cbar = heatmap.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=TICKSIZE+10) 
+        
+        ax.set_xlabel("Column Index", fontsize=LABELSIZE-2)
+        ax.set_ylabel("Row Index", fontsize=LABELSIZE-2)
+        ax.tick_params(labelsize=TICKSIZE)
     
-    # Plot the non-zero elements
-    plt.spy(sparse_matrix, markersize=0.5, color='blue')
+    # Adjust spacing between subplots
+    plt.tight_layout(rect=[0, 0, 1, 0.95]) 
     
-    plt.title(title, fontsize=16)
-    plt.xlabel("Column Index", fontsize=LABELSIZE)
-    plt.ylabel("Row Index", fontsize=LABELSIZE)
-    plt.tight_layout()
-    plt.savefig(f"figures/boundaries/{title.replace(' ', '_').lower()}.pdf")
+    filename = "figures/boundaries/all_membrane_matrices_comparison.pdf"
+    plt.savefig(filename, bbox_inches='tight')
     plt.show()
-
-
-def plot_detailed_matrix_view(matrix, title="Matrix Values", max_size=50):
-    """
-    Plot a more detailed view of the matrix, showing actual values.
-    If matrix is large, only a subset will be shown.
-    """
-    # Convert to dense array for plotting
-    if scipy.sparse.issparse(matrix):
-        if matrix.shape[0] > max_size:
-            # Extract a smaller portion for large matrices
-            matrix_dense = matrix[:max_size, :max_size].toarray()
-            title = f"{title} (First {max_size}x{max_size} Elements)"
-        else:
-            matrix_dense = matrix.toarray()
-    else:
-        if matrix.shape[0] > max_size:
-            matrix_dense = matrix[:max_size, :max_size]
-            title = f"{title} (First {max_size}x{max_size} Elements)"
-        else:
-            matrix_dense = matrix
-    
-    plt.figure(figsize=(12, 10))
-    
-    # Use a colormap that clearly shows zero vs non-zero
-    cmap = plt.cm.viridis
-    cmap.set_bad('white')
-    
-    # Plot matrix values
-    im = plt.imshow(matrix_dense, cmap=cmap, interpolation='nearest')
-    
-    # Add a colorbar
-    plt.colorbar(im, label="Matrix Value")
-    
-    plt.title(title, fontsize=LABELSIZE)
-    plt.xlabel("Column Index", fontsize=LABELSIZE)
-    plt.ylabel("Row Index", fontsize=LABELSIZE)
-    
-    # Add grid lines to separate cells for small matrices
-    if matrix_dense.shape[0] <= 20:
-        plt.grid(which='both', color='black', linestyle='-', linewidth=0.5, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(f"figures/boundaries/{title.replace(' ', '_').lower()}.pdf")
-    plt.show()
-
-
-def visualize_matrix_structure(solver, plot_values=True):
-    """
-    Visualize the structure of the matrix A in the MembraneSolver.
-    """
-    # Create directory for figures if it doesn't exist
-    import os
-    os.makedirs("figures", exist_ok=True)
-    
-    # Plot the sparsity pattern
-    plot_matrix_mask(solver.A, f"{solver.shape.capitalize()} Membrane Matrix Sparsity")
-    
-    # Plot the actual values if requested
-    if plot_values:
-        plot_detailed_matrix_view(solver.A, f"{solver.shape.capitalize()} Membrane Matrix Values")
-    
-    if scipy.sparse.issparse(solver.A):
-        nnz = solver.A.nnz
-        size = solver.A.shape[0] * solver.A.shape[1]
-        sparsity = (1 - nnz/size) * 100
-        print(f"Matrix shape: {solver.A.shape}")
-        print(f"Number of non-zero elements: {nnz}")
-        print(f"Sparsity: {sparsity:.2f}% (percentage of zeros)")
-    else:
-        nnz = np.count_nonzero(solver.A)
-        size = solver.A.shape[0] * solver.A.shape[1]
-        sparsity = (1 - nnz/size) * 100
-        print(f"Matrix shape: {solver.A.shape}")
-        print(f"Number of non-zero elements: {nnz}")
-        print(f"Sparsity: {sparsity:.2f}% (percentage of zeros)")
