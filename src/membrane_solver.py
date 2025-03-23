@@ -25,8 +25,8 @@ sns.set(style="whitegrid")
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-LABELSIZE = 28
-TICKSIZE = 24
+LABELSIZE = 26
+TICKSIZE = 22
 
 class MembraneSolver:
     def __init__(self, n, shape='square', L=1.0, use_sparse=False):
@@ -129,7 +129,7 @@ class MembraneSolver:
         """ Plot the first num_modes eigenmodes and save them in the correct directory """
         n_cols = 2
         n_rows = int(np.ceil(num_modes / n_cols))
-        fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 5*n_rows), sharex=True, sharey=True)
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(4*n_cols, 3*n_rows), sharex=True, sharey=True)
         axes = axes.flatten()
 
         for i in range(num_modes):
@@ -158,6 +158,7 @@ class MembraneSolver:
                 axes[j].set_visible(False)
 
         plt.tight_layout()
+        plt.subplots_adjust(hspace=0.5, wspace=0.2)
 
         # **Create the correct folder structure**
         folder = "figures/sparse" if self.use_sparse else "figures/dense"

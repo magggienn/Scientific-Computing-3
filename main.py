@@ -20,8 +20,8 @@ def solve_membrane():
         # Solve to compare performance sparse and not sparse
         dense_stats, sparse_stats = solver.compare_performance()
         results[shape] = {'dense': dense_stats, 'sparse': sparse_stats}
-        # solver.solve(num_modes=6)
-        # solver.plot_modes()
+        solver.solve(num_modes=6)
+        solver.plot_modes()
         # visualize_matrix_structure(solver)
         # for mode_idx in range(6):
         #     anim = solver.animate_mode(
@@ -30,7 +30,7 @@ def solve_membrane():
         #         fps=30, 
         #         filename=f'animations/{shape}/{shape}_mode_{mode_idx+1}.mp4'
             # )
-    plot_combined_performance(results, n_value=30)
+    #plot_combined_performance(results, n_value=30)
 
 def solve_direct_method():
     diffusion = SolveDirectMethod()
@@ -38,6 +38,6 @@ def solve_direct_method():
     diffusion.plot()
 
 if __name__ == "__main__":
-    solve_membrane()
+    # solve_membrane()
     # solve_direct_method()
-    # plot_eigenfrequencies_vs_L()
+    plot_eigenfrequencies_vs_L()

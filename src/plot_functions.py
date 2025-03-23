@@ -8,11 +8,11 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import FancyBboxPatch
 
 sns.set(style="whitegrid")
-colors = sns.color_palette("Set2", 4)
+colors = sns.color_palette('colorblind', n_colors=4)
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 29 #24
-TICKSIZE = 25 #20
+LABELSIZE = 24
+TICKSIZE = 20
 
 def plot_eigenfrequencies_vs_L(num_modes=6):
     """Plot eigenfrequencies as a function of L for different shapes."""    
@@ -81,14 +81,14 @@ def plot_eigenfrequencies_vs_L(num_modes=6):
     legend_labels.append("$\\sim 1/L$")
     
     solid_line = Line2D([0], [0], color='k', lw=2.5)
-    dashed_line = Line2D([0], [0], color='k', lw=1.5, linestyle='--', alpha=0.7)
+    dashed_line = Line2D([0], [0], color='k', lw=1.5, linestyle='--', alpha=0.5)
     
     legend_handles.extend([solid_line, dashed_line])
     legend_labels.extend(['Mode 1 (Fundamental)', 'Higher Modes (2-6)'])
     
     plt.xlabel('L (Size Parameter)', fontsize=LABELSIZE)
     plt.ylabel('Eigenfrequency', fontsize=LABELSIZE)
-    plt.title('Membrane Eigenfrequencies vs. Size (L)', fontsize=LABELSIZE)
+    #plt.title('Membrane Eigenfrequencies vs. Size (L)', fontsize=LABELSIZE)
     plt.tick_params(labelsize=TICKSIZE)
     plt.grid(True, alpha=0.3)
 
