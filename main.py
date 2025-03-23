@@ -62,3 +62,4 @@ if __name__ == "__main__":
 
     # Uncomment to plot the eigenfrequencies as a function of L for different shapes
     # plot_eigenfrequencies_vs_L()
+    pass
