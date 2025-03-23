@@ -1,11 +1,21 @@
+"""
+University: University of Amsterdam
+Course: Scientific Computing
+Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
+ID's: 15794717, 15899039, 12714933
+
+Description: Contains the class SolveDirectMethod that solves the diffusion equation using the direct method. 
+It constructs the M matrix from the finite difference discretization of the Laplacian and the b vector to include the source term. 
+This class also contains a method to plot the solution.
+"""
 import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-LABELSIZE =27
-TICKSIZE = 25
+LABELSIZE =25
+TICKSIZE = 23
 
 class SolveDirectMethod:
     '''
@@ -89,31 +99,34 @@ class SolveDirectMethod:
 
     def plot(self, filename='figures/direct_method.pdf'):
         '''
-        Plots the solution
+        Plots the solution.
         '''
-        plt.figure(figsize=(7, 6))
-        
-        # Plot the solution
-        contour = plt.contourf(self.x, self.y, self.result, levels=50, cmap='Spectral')
-        cbar = plt.colorbar(contour)
+        fig, ax = plt.subplots(figsize=(6.5, 6)) 
+        contour = ax.contourf(self.x, self.y, self.result, levels=100, cmap='Spectral')
+
+        # Circle boundary
+        circle = plt.Circle((0, 0), self.radius, fill=False, color='black', linestyle='-', linewidth=0.5)
+        ax.add_patch(circle)
+
+        ax.set_xlabel('x', fontsize=LABELSIZE)
+        ax.set_ylabel('y', fontsize=LABELSIZE)
+        ax.set_aspect('equal') 
+        ax.tick_params(labelsize=TICKSIZE)
+
+        cbar = fig.colorbar(contour, ax=ax, fraction=0.046, pad=0.04)
         cbar.ax.set_ylabel('Concentration', fontsize=LABELSIZE)
         cbar.ax.tick_params(labelsize=TICKSIZE)
 
-        
-        # Add the circle boundary
-        circle = plt.Circle((0, 0), self.radius, fill=False, color='black', linestyle='-', linewidth=0.5)
-        plt.gca().add_patch(circle)
-        
-        #plt.title('Steady-State Concentration Distribution')
-        plt.xlabel('x', fontsize=LABELSIZE)
-        plt.ylabel('y', fontsize=LABELSIZE)
-        plt.xlim(-self.radius, self.radius)
-        plt.ylim(-self.radius, self.radius)
-        #plt.legend()
-        plt.tight_layout()
-        plt.tick_params(labelsize=TICKSIZE)
-        plt.savefig(filename)
+        # To make sure the tick values aren't too many 
+        min_val = np.min(self.result)
+        max_val = np.max(self.result)
+        cbar.set_ticks(np.linspace(min_val, max_val, 6))  # e.g. 6 steps
+        cbar.ax.set_yticklabels([f"{tick:.2f}" for tick in np.linspace(min_val, max_val, 6)])
+
+        fig.tight_layout()
+        fig.savefig(filename, bbox_inches='tight')
         plt.show()
+
 
 if __name__ == "__main__":
     diffusion = SolveDirectMethod()

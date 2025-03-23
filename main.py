@@ -1,3 +1,16 @@
+"""
+University: University of Amsterdam
+Course: Scientific Computing
+Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
+ID's: 15794717, 15899039, 12714933
+
+Description: Combines all the different modules into one and runs the required
+parts and plots.
+
+Typical usage example:
+
+python3 main.py
+"""
 from src.membrane_solver import MembraneSolver
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,21 +33,20 @@ def solve_membrane():
     for shape in ['square', 'rectangle', 'circle']:
         solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
         # Solve to compare performance sparse and not sparse
-        # dense_stats, sparse_stats = solver.compare_performance()
-        # results[shape] = {'dense': dense_stats, 'sparse': sparse_stats}
+        dense_stats, sparse_stats = solver.compare_performance()
+        results[shape] = {'dense': dense_stats, 'sparse': sparse_stats}
         solver.solve(num_modes=6)
-        # solver.plot_modes()
-        visualize_matrix_structure(solver)
-        
-    visualize_all_matrices_in_one_row()
+        solver.plot_modes()
+        # Uncomment to make animation
+        # visualize_matrix_structure(solver)
         # for mode_idx in range(6):
-    #     #     anim = solver.animate_mode(
-    #     #         mode_idx=mode_idx, 
-    #     #         duration=5, 
-    #     #         fps=30, 
-    #     #         filename=f'animations/{shape}/{shape}_mode_{mode_idx+1}.mp4'
-    #         # )
-         # plot_combined_performance(results, n_value=30)
+        #     anim = solver.animate_mode(
+        #         mode_idx=mode_idx, 
+        #         duration=5, 
+        #         fps=30, 
+        #         filename=f'animations/{shape}/{shape}_mode_{mode_idx+1}.mp4'
+            # )
+    plot_combined_performance(results, n_value=30)
 
 def solve_direct_method():
     diffusion = SolveDirectMethod()
@@ -42,6 +54,12 @@ def solve_direct_method():
     diffusion.plot()
 
 if __name__ == "__main__":
-    solve_membrane()
+    # Uncomment to run the membrane solver
+    # solve_membrane()
+
+    # Uncomment to run the direct method
     # solve_direct_method()
+
+    # Uncomment to plot the eigenfrequencies as a function of L for different shapes
     # plot_eigenfrequencies_vs_L()
+    pass
