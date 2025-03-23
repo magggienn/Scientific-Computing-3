@@ -16,10 +16,6 @@ the result of applying a driving force.
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-
-from matplotlib.collections import LineCollection
-from matplotlib.lines import Line2D
-
 import os
 
 SHOW = True
@@ -140,14 +136,16 @@ class LeapfrogHarmonicOscillator:
         plt.tight_layout()
 
         # Save the figure
-        plt.savefig(os.path.join(FIGURE_PATH, 'frog_position_velocity.pdf'), dpi=300, bbox_inches="tight")
+        plt.savefig(os.path.join(FIGURE_PATH, 'frog_position_velocity.pdf'),
+                    dpi=300, bbox_inches="tight")
         if SHOW is not True:
             plt.close()
         plt.show()
 
     def plot_phase_space(self, x0, v0, frequencies, rf):
         """
-        Plots the phase space trajectory for different driving frequencies with arrows to indicate the direction.
+        Plots the phase space trajectory for different driving frequencies with
+        arrows to indicate the direction.
 
         Args:
             x0: Initial position (float)
@@ -161,14 +159,15 @@ class LeapfrogHarmonicOscillator:
             _, x_vals, v_vals = self.integrate(x0, v0)
 
             # Plot the phase space trajectory with arrowheads showing the direction
-            line, = plt.plot(x_vals, v_vals, label=f'f={round(f / rf, 2)} * ' + r"$f_{res}$", linewidth=3, marker='o', markersize=3)
+            line, = plt.plot(x_vals, v_vals, label=f'f={round(f / rf, 2)} * ' + r"$f_{res}$",
+                             linewidth=3, marker='o', markersize=3)
 
             line_color = line.get_color()
 
             # Add arrows along the line at regular intervals
             for i in range(0, len(x_vals) - 1, len(x_vals) // 10):  # Add arrows at intervals
                 plt.arrow(x_vals[i], v_vals[i], x_vals[i+1] - x_vals[i], v_vals[i+1] - v_vals[i],
-                        head_width=0.15, head_length=0.12, fc=line_color, ec=line_color)
+                          head_width=0.15, head_length=0.12, fc=line_color, ec=line_color)
 
         # Configure labels, title, and legend with global font settings
         plt.xlabel(r"Position", fontsize=LABELSIZE)
@@ -241,7 +240,8 @@ def compare_energy_conservation(x0, v0, k, dt, t_max, F_ext=None):
     plt.subplots_adjust(bottom=0.15, top=0.8)
 
     # Save the figure
-    plt.savefig(os.path.join(FIGURE_PATH, 'frog_energy_conservation.pdf'), dpi=300, bbox_inches="tight")
+    plt.savefig(os.path.join(FIGURE_PATH, 'frog_energy_conservation.pdf'),
+                dpi=300, bbox_inches="tight")
     if SHOW is not True:
         plt.close()
     plt.show()
@@ -250,30 +250,6 @@ def compare_energy_conservation(x0, v0, k, dt, t_max, F_ext=None):
 def calculate_natural_frequency(k, m=1.0):
     """Calculates the natural frequency of the oscillator."""
     return (1 / (2 * np.pi)) * np.sqrt(k / m)
-
-
-def compare_energy_growth(x0, v0, k, dt, t_max, f_drive):
-    F_ext = lambda t: np.sin(2 * np.pi * f_drive * t)  # Driving force
-
-    # Leapfrog simulation
-    lf_oscillator = LeapfrogHarmonicOscillator(k, dt=dt, t_max=t_max, F_ext=F_ext)
-    t_vals, x_vals, v_vals = lf_oscillator.integrate(x0, v0)
-    energy_leapfrog = 0.5 * k * x_vals**2 + 0.5 * v_vals**2
-
-    # RK45 simulation
-    sol = solve_ivp(harmonic_oscillator, [0, t_max], [x0, v0], args=(k, 1, F_ext),
-                    t_eval=t_vals, method='RK45')
-    energy_rk45 = 0.5 * k * sol.y[0]**2 + 0.5 * sol.y[1]**2
-
-    # Plot energy growth
-    plt.figure(figsize=(8, 5))
-    plt.plot(t_vals, energy_leapfrog, label='Leapfrog', linestyle='--')
-    plt.plot(t_vals, energy_rk45, label='RK45')
-    plt.xlabel("Time")
-    plt.ylabel("Total Energy")
-    plt.title(f"Energy Growth Comparison (f_drive={f_drive})")
-    plt.legend()
-    plt.show()
 
 
 def plot_phase_space_comparison(x0, v0, frequencies_list, rf, k=1.0, dt=0.001, t_max_list=[10, 50]):
@@ -299,7 +275,8 @@ def plot_phase_space_comparison(x0, v0, frequencies_list, rf, k=1.0, dt=0.001, t
             _, x_vals, v_vals = lf_oscillator.integrate(x0, v0)
 
             # Plot phase space trajectory
-            line, = ax.plot(x_vals, v_vals, label=f'f={round(f / rf, 2)} * ' + r"$f_{res}$", linewidth=3)
+            line, = ax.plot(x_vals, v_vals, label=f'f={round(f / rf, 2)} * ' +
+                            r"$f_{res}$", linewidth=3)
 
             line_color = line.get_color()
 
@@ -333,11 +310,12 @@ def main():
 
     p1()
 
-
     def p2():
         # Replace the two separate calls with the new function:
         cf = calculate_natural_frequency(k=1.0)
-        plot_phase_space_comparison(x0=1.0, v0=0.0, frequencies_list=[[0.4 * cf, cf, 1.6 * cf], [cf]], rf=cf)
+        plot_phase_space_comparison(x0=1.0, v0=0.0,
+                                    frequencies_list=[[0.4 * cf, cf, 1.6 * cf],
+                                                      [cf]], rf=cf)
 
     p2()
 
