@@ -11,6 +11,12 @@ method for 1d integration over t_max time steps. It also contains functionality
 to include a driving force to the system to incur resonance. Lastly, the module
 also includes plotting functions to show the evolution of the system and show
 the result of applying a driving force.
+
+NOTE: SHOW parameter can be changed to plt.show() for all the figures or not.
+If not, then the figures will only be stored in the corresponding map rather
+than also being shown as plt object.
+
+Usage: see main.py
 '''
 
 import numpy as np
@@ -296,29 +302,3 @@ def plot_phase_space_comparison(x0, v0, frequencies_list, rf, k=1.0, dt=0.001, t
     if SHOW is not True:
         plt.close()
     plt.show()
-
-
-def main():
-
-    def p1():
-        k = 1.0
-        dt = 0.001
-        t_max = 20
-        lf_oscillator = LeapfrogHarmonicOscillator(k=k, dt=dt, t_max=t_max)
-        lf_oscillator.plot_results(x0=1.0, v0=0.0, ks=[0.5, 1.0, 2.0])
-        compare_energy_conservation(x0=1.0, v0=0.0, k=1.0, dt=0.01, t_max=50)
-
-    p1()
-
-    def p2():
-        # Replace the two separate calls with the new function:
-        cf = calculate_natural_frequency(k=1.0)
-        plot_phase_space_comparison(x0=1.0, v0=0.0,
-                                    frequencies_list=[[0.4 * cf, cf, 1.6 * cf],
-                                                      [cf]], rf=cf)
-
-    p2()
-
-
-if __name__ == "__main__":
-    main()
