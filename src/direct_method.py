@@ -4,8 +4,8 @@ import scipy.sparse.linalg
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-LABELSIZE =28
-TICKSIZE = 26
+LABELSIZE =27
+TICKSIZE = 25
 
 class SolveDirectMethod:
     '''
@@ -95,16 +95,15 @@ class SolveDirectMethod:
         
         # Plot the solution
         contour = plt.contourf(self.x, self.y, self.result, levels=50, cmap='Spectral')
-        plt.colorbar(contour, label='Concentration')
+        cbar = plt.colorbar(contour)
+        cbar.ax.set_ylabel('Concentration', fontsize=LABELSIZE)
+        cbar.ax.tick_params(labelsize=TICKSIZE)
+
         
         # Add the circle boundary
         circle = plt.Circle((0, 0), self.radius, fill=False, color='black', linestyle='-', linewidth=0.5)
         plt.gca().add_patch(circle)
         
-        # Plot the source point
-        #plt.scatter(self.source_loc[0], self.source_loc[1], label='Source', s=5, color='pink', marker='x')
-        
-        # Set plot properties
         #plt.title('Steady-State Concentration Distribution')
         plt.xlabel('x', fontsize=LABELSIZE)
         plt.ylabel('y', fontsize=LABELSIZE)
@@ -113,52 +112,7 @@ class SolveDirectMethod:
         #plt.legend()
         plt.tight_layout()
         plt.tick_params(labelsize=TICKSIZE)
-        # Save and show
         plt.savefig(filename)
-        plt.show()
-
-    def animate(self, duration=10, fps=30, filename="animations/AnimateDirectMethod.mkv"):
-        '''
-        Animate the solution
-        '''
-        if not hasattr(self, 'result'):
-            raise ValueError("You need to call solve() before animating.")
-
-        # Calculate total number of frames
-        num_frames = duration * fps
-
-        # Create figure and initial plot
-        fig, ax = plt.subplots(figsize=(6, 6))
-        max_result = np.max(self.result)
-        if max_result <= 0:
-            raise ValueError("Maximum result value must be positive to create contour levels.")
-        
-        levels = np.linspace(0, max_result, 50)
-        contour = ax.contourf(self.x, self.y, np.zeros_like(self.result), levels=levels, cmap='jet')
-        cbar = plt.colorbar(contour, ax=ax)
-        cbar.set_label('Concentration')
-        ax.set_title('Steady-State Concentration Distribution (Animation)')
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-
-        def update(frame):
-            """Update function for the animation."""
-            progress = (frame + 1) / num_frames
-            current_result = self.result * progress
-            ax.clear()
-            contour = ax.contourf(self.x, self.y, current_result, levels=levels, cmap='jet')
-            ax.set_title(f'Steady-State Concentration Distribution (iter={progress:.2f}s)')
-            ax.set_xlabel('x')
-            ax.set_ylabel('y')
-            return contour.collections
-
-        # Create animation
-        anim = animation.FuncAnimation(fig, update, frames=num_frames, interval=1000 / fps, blit=True)
-
-        if filename:
-            anim.save(filename, writer='ffmpeg', fps=fps)
-            print(f"Animation saved to {filename}")
-
         plt.show()
 
 if __name__ == "__main__":

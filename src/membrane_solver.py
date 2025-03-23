@@ -4,13 +4,13 @@ Course: Scientific Computing
 Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
 ID's: 15794717, 15899039, 12714933
 
-Description:
-
+Description: Implementation of the MembraneSolver class that solves the eigenvalue problem for a vibrating membrane.
+The class can handle square, rectangular, and circular membranes. The eigenvalue problem is solved using dense or sparse
+matrices. 
 
 The code also provides functions to animate the strings motion and plot time snapshots of the
 string at various time steps.
 '''
-
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -25,9 +25,8 @@ sns.set(style="whitegrid")
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 
-LABELSIZE = 14
-TICKSIZE = 12
-
+LABELSIZE = 28
+TICKSIZE = 24
 
 class MembraneSolver:
     def __init__(self, n, shape='square', L=1.0, use_sparse=False):
@@ -40,6 +39,8 @@ class MembraneSolver:
         self.x = np.linspace(0, L, n)
         self.y = np.linspace(0, L, n)
         self.mask = np.ones((n, n), dtype=bool)
+        self.eigenvalues = None
+        self.eigenvectors = None
         
         if shape == 'circle':
             X, Y = np.meshgrid(self.x, self.y)
@@ -102,61 +103,107 @@ class MembraneSolver:
         self.A = scipy.sparse.csr_matrix((data, (rows, cols)), shape=(self.num_points, self.num_points))
         
     def solve(self, num_modes=6):
-        """ Solve the eigenvalue problem """
+        """ Solve the eigenvalue problem while ensuring real eigenvalues """
         if self.use_sparse:
-            eigenvalues, eigenvectors = eigs(self.A, k=num_modes, which='SM', tol=1e-8)
+            eigenvalues, eigenvectors = eigs(self.A, k=num_modes+2, which='SM', tol=1e-12)
         else:
             eigenvalues, eigenvectors = eigh(self.A.toarray())
-            eigenvalues, eigenvectors = eigenvalues[:num_modes], eigenvectors[:, :num_modes]
-        
-        idx = np.argsort(np.abs(eigenvalues))
-        self.eigenvalues, self.eigenvectors = eigenvalues[idx], eigenvectors[:, idx]
+
+        # real values
+        eigenvalues = np.real(eigenvalues)
+        eigenvectors = np.real(eigenvectors)
+
+        # sort and store
+        idx = np.argsort(np.abs(eigenvalues)) 
+        eigenvalues, eigenvectors = eigenvalues[idx], eigenvectors[:, idx]
+
+        # normalize eigenvectors (column-wise)
+        eigenvectors /= np.linalg.norm(eigenvectors, axis=0)
+
+        self.eigenvalues, self.eigenvectors = eigenvalues, eigenvectors
         self.frequencies = np.sqrt(np.maximum(0, -self.eigenvalues))
+        
+        print(f"\n{'Sparse' if self.use_sparse else 'Dense'} Eigenvalues:\n", self.eigenvalues)
     
     def plot_modes(self, num_modes=6):
-        """ Plot the first num_modes eigenmodes """
+        """ Plot the first num_modes eigenmodes and save them in the correct directory """
         n_cols = 2
         n_rows = int(np.ceil(num_modes / n_cols))
         fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 5*n_rows), sharex=True, sharey=True)
         axes = axes.flatten()
-        
+
         for i in range(num_modes):
             mode = np.zeros((self.n, self.n))
             mode[self.mask] = self.eigenvectors[:, i]
             ax = axes[i]
             im = ax.imshow(mode, cmap='Spectral', origin='lower', extent=[0, self.L, 0, self.L])
-            ax.set_title(f'Mode {i+1}\nFreq: {self.frequencies[i]:.3f}')
+            ax.set_title(f'Mode {i+1}\nFreq: {self.frequencies[i]:.3f}',fontsize=LABELSIZE-4)
             cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+            cbar.ax.tick_params(labelsize=TICKSIZE)
+            ax.tick_params(labelbottom=True, labelsize=TICKSIZE)
+
             if i % n_cols == 0:
                 ax.set_ylabel('y', fontsize=LABELSIZE)
             else:
                 cbar.set_label('Amplitude', fontsize=LABELSIZE)
 
+
             if i == num_modes - 1 or i == num_modes - 2:
                 ax.set_xlabel('x', fontsize=LABELSIZE)
-                ax.tick_params(labelbottom=True, labelsize=TICKSIZE)
-        
+            
+
         # Hide unused subplots
         for j in range(num_modes, n_rows * n_cols):
             if j < len(axes):
                 axes[j].set_visible(False)
-                
+
         plt.tight_layout()
-        plt.savefig(f'figures/{self.shape}_modes.pdf')    
+
+        # **Create the correct folder structure**
+        folder = "figures/sparse" if self.use_sparse else "figures/dense"
+        os.makedirs(folder, exist_ok=True)  
+
+        # **Save the figure in the correct directory**
+        filename = f"{folder}/{self.shape}_modes_{'sparse' if self.use_sparse else 'dense'}.pdf"
+        plt.savefig(filename)
+        print(f"Saved: {filename}") 
         plt.show()
+        
+    def compare_performance(self, num_runs=100, num_modes=6):
+        """ 
+        Compare the performance of dense and sparse solver
+        """
+        dense_times = []
+        sparse_times = []
+        
+        for i in range(num_runs):
+            # Dense solver timing
+            start_dense = time.time()
+            eigenvalues, eigenvectors = eigh(self.A.toarray())
+            eigenvalues, eigenvectors = eigenvalues[:num_modes], eigenvectors[:, :num_modes]
+            end_dense = time.time()
+            dense_times.append(end_dense - start_dense)
+            
+            # Sparse solver timing 
+            start_sparse = time.time()
+            eigenvalues, eigenvectors = eigs(self.A, k=num_modes, which='SM', tol=1e-8)
+            end_sparse = time.time()
+            sparse_times.append(end_sparse - start_sparse)
+        
+        # Mean and std
+        dense_mean = np.mean(dense_times)
+        dense_std = np.std(dense_times, ddof=1)
+        sparse_mean = np.mean(sparse_times)
+        sparse_std = np.std(sparse_times, ddof=1)
+        
+        print(f"Dense solver time: {dense_mean:.4f}s ± {dense_std:.4f}s")
+        print(f"Sparse solver time: {sparse_mean:.4f}s ± {sparse_std:.4f}s")
+        print(f"Speedup factor: {dense_mean/sparse_mean:.2f}x")
     
-    def compare_performance(self):
-        """ Compare the performance of dense and sparse solvers """
-        start_dense = time.time()
-        eigh(self.A.toarray())
-        end_dense = time.time()
+        dense_stats = {'mean': dense_mean, 'std': dense_std, 'measurements': dense_times}
+        sparse_stats = {'mean': sparse_mean, 'std': sparse_std, 'measurements': sparse_times}
         
-        start_sparse = time.time()
-        eigs(self.A, k=6, which='SM', tol=1e-8)
-        end_sparse = time.time()
-        
-        print(f"Dense solver time: {end_dense - start_dense:.4f}s")
-        print(f"Sparse solver time: {end_sparse - start_sparse:.4f}s")
+        return dense_stats, sparse_stats
     
     def animate_mode(self, mode_idx=0, duration=10, fps=30, filename=None):
         '''
@@ -251,16 +298,6 @@ class MembraneSolver:
         plt.show()
         
         return anim
-    
-    def plot_L(self):
-        self.frequencies 
+ 
     
     
-if __name__ == "__main__":
-    # Test the solver for different shapes
-    for shape in ['square', 'rectangle', 'circle']:
-        solver = MembraneSolver(n=30, shape=shape, use_sparse=True)
-        solver.solve(num_modes=6)
-        print(f"\nShape: {shape}, First 6 frequencies: {solver.frequencies}")
-        solver.plot_modes()
-        solver.compare_performance()
