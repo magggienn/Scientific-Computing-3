@@ -37,6 +37,7 @@ def solve_membrane():
         results[shape] = {'dense': dense_stats, 'sparse': sparse_stats}
         solver.solve(num_modes=6)
         solver.plot_modes()
+        # Uncomment to make animation
         # visualize_matrix_structure(solver)
         # for mode_idx in range(6):
         #     anim = solver.animate_mode(
@@ -45,7 +46,7 @@ def solve_membrane():
         #         fps=30, 
         #         filename=f'animations/{shape}/{shape}_mode_{mode_idx+1}.mp4'
             # )
-    #plot_combined_performance(results, n_value=30)
+    plot_combined_performance(results, n_value=30)
 
 def solve_direct_method():
     diffusion = SolveDirectMethod()
@@ -53,6 +54,11 @@ def solve_direct_method():
     diffusion.plot()
 
 if __name__ == "__main__":
+    # Uncomment to run the membrane solver
     # solve_membrane()
+
+    # Uncomment to run the direct method
     # solve_direct_method()
-    plot_eigenfrequencies_vs_L()
+
+    # Uncomment to plot the eigenfrequencies as a function of L for different shapes
+    # plot_eigenfrequencies_vs_L()
