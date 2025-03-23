@@ -4,18 +4,19 @@ Course: Scientific Computing
 Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
 ID's: 15794717, 15899039, 12714933
 
-Description: Contains the class SolveDirectMethod that solves the diffusion equation using the direct method. 
-It constructs the M matrix from the finite difference discretization of the Laplacian and the b vector to include the source term. 
-This class also contains a method to plot the solution.
+Description: Contains the class SolveDirectMethod that solves the diffusion
+equation using the direct method. It constructs the M matrix from the finite
+difference discretization of the Laplacian and the b vector to include the source
+term. This class also contains a method to plot the solution.
 """
 import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
-LABELSIZE =25
+LABELSIZE = 25
 TICKSIZE = 23
+
 
 class SolveDirectMethod:
     '''
@@ -44,7 +45,7 @@ class SolveDirectMethod:
         closest_x = min(self.x, key=lambda xi: abs(xi - self.source_loc[0]))
         closest_y = min(self.y, key=lambda yi: abs(yi - self.source_loc[1]))
         return 1 if (x == closest_x and y == closest_y) else 0
-    
+
     def build_M_matrix(self):
         '''
         Constructs M matrix from the finite difference discretization of the Laplacian
@@ -55,7 +56,7 @@ class SolveDirectMethod:
 
         for i in range(self.Ny):
             for j in range(self.Nx):
-                if self.mask[i, j]: 
+                if self.mask[i, j]:
                     idx = self.indices[i, j]
 
                     laplace_main.append(-4)
@@ -70,9 +71,10 @@ class SolveDirectMethod:
                             laplace_i.append(idx)
                             laplace_j.append(neighbor_idx)
 
-        M = scipy.sparse.csr_matrix((laplace_main, (laplace_i, laplace_j)), shape=(self.num_points, self.num_points))
+        M = scipy.sparse.csr_matrix((laplace_main, (laplace_i, laplace_j)),
+                                    shape=(self.num_points, self.num_points))
         return M
-    
+
     def build_b_vector(self):
         '''
         Constructs the b vector incorporating the source term
@@ -86,7 +88,7 @@ class SolveDirectMethod:
                     y_pos = self.y[i]
                     b_vec[row] = self.source_calc(x_pos, y_pos)
         return b_vec
-    
+
     def solve(self):
         '''
         Solves the diffusion equation using a direct method
@@ -101,7 +103,7 @@ class SolveDirectMethod:
         '''
         Plots the solution.
         '''
-        fig, ax = plt.subplots(figsize=(6.5, 6)) 
+        fig, ax = plt.subplots(figsize=(6.5, 6))
         contour = ax.contourf(self.x, self.y, self.result, levels=100, cmap='Spectral')
 
         # Circle boundary
@@ -110,14 +112,14 @@ class SolveDirectMethod:
 
         ax.set_xlabel('x', fontsize=LABELSIZE)
         ax.set_ylabel('y', fontsize=LABELSIZE)
-        ax.set_aspect('equal') 
+        ax.set_aspect('equal')
         ax.tick_params(labelsize=TICKSIZE)
 
         cbar = fig.colorbar(contour, ax=ax, fraction=0.046, pad=0.04)
         cbar.ax.set_ylabel('Concentration', fontsize=LABELSIZE)
         cbar.ax.tick_params(labelsize=TICKSIZE)
 
-        # To make sure the tick values aren't too many 
+        # To make sure the tick values aren't too many
         min_val = np.min(self.result)
         max_val = np.max(self.result)
         cbar.set_ticks(np.linspace(min_val, max_val, 6))  # e.g. 6 steps
