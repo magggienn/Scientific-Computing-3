@@ -7,14 +7,13 @@ from src.membrane_solver import MembraneSolver
 sns.set(style="whitegrid")
 plt.rc('text')
 plt.rc('font', family='serif')
-LABELSIZE = 30
-TICKSIZE = 10
+LABELSIZE = 40
+TICKSIZE = 12
 
 def visualize_matrix_structure(solver):
     """
     Visualizes the matrix structure for a single membrane shape
     """
-    # Convert sparse matrix to dense if needed
     matrix = solver.A.toarray()
     size = min(50, matrix.shape[0])
     matrix_subset = matrix[:size, :size]
@@ -22,7 +21,12 @@ def visualize_matrix_structure(solver):
     plt.figure(figsize=(6, 5))
     plt.title(f"{solver.shape.capitalize()} Membrane Matrix", fontsize=LABELSIZE)
     
-    sns.heatmap(matrix_subset, cmap='Spectral', center=0)
+    # Create heatmap and capture the returned mappable object that contains the colorbar info
+    heatmap = sns.heatmap(matrix_subset, cmap='Spectral', center=0)
+    
+    # Get and customize the colorbar
+    cbar = heatmap.collections[0].colorbar
+    cbar.ax.tick_params(labelsize=TICKSIZE+10) 
     
     plt.xlabel("Column Index", fontsize=LABELSIZE)
     plt.ylabel("Row Index", fontsize=LABELSIZE)
@@ -50,18 +54,18 @@ def visualize_all_matrices_in_one_row():
         size = min(50, matrix.shape[0])
         matrix_subset = matrix[:size, :size]
         
-        # Create heatmap in the corresponding subplot
         ax = axes[i]
-        sns.heatmap(matrix_subset, cmap='Spectral', center=0, ax=ax)
+        heatmap = sns.heatmap(matrix_subset, cmap='Spectral', center=0, ax=ax)
         
-        # Set subplot title and labels
-        # ax.set_title(f"{shape.capitalize()} Membrane", fontsize=LABELSIZE)
+        cbar = heatmap.collections[0].colorbar
+        cbar.ax.tick_params(labelsize=TICKSIZE+10) 
+        
         ax.set_xlabel("Column Index", fontsize=LABELSIZE-2)
         ax.set_ylabel("Row Index", fontsize=LABELSIZE-2)
         ax.tick_params(labelsize=TICKSIZE)
     
     # Adjust spacing between subplots
-    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Make room for the figure title
+    plt.tight_layout(rect=[0, 0, 1, 0.95]) 
     
     filename = "figures/boundaries/all_membrane_matrices_comparison.pdf"
     plt.savefig(filename, bbox_inches='tight')
