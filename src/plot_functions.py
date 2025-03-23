@@ -1,3 +1,12 @@
+"""
+University: University of Amsterdam
+Course: Scientific Computing
+Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
+ID's: 15794717, 15899039, 12714933
+
+Description: Contains functions for plotting the eigenfrequencies of the membrane
+and comparing the performance of the direct and iterative methods.
+"""
 from src.membrane_solver import MembraneSolver
 import matplotlib.pyplot as plt
 import numpy as np

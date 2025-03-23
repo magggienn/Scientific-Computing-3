@@ -1,3 +1,13 @@
+"""
+University: University of Amsterdam
+Course: Scientific Computing
+Authors: Margarita Petrova, Maan Scipio, Pjotr Piet
+ID's: 15794717, 15899039, 12714933
+
+Description: Contains the class SolveDirectMethod that solves the diffusion equation using the direct method. 
+It constructs the M matrix from the finite difference discretization of the Laplacian and the b vector to include the source term. 
+This class also contains a method to plot the solution.
+"""
 import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
@@ -112,7 +122,7 @@ class SolveDirectMethod:
         max_val = np.max(self.result)
         cbar.set_ticks(np.linspace(min_val, max_val, 6))  # e.g. 6 steps
         cbar.ax.set_yticklabels([f"{tick:.2f}" for tick in np.linspace(min_val, max_val, 6)])
-        
+
         fig.tight_layout()
         fig.savefig(filename, bbox_inches='tight')
         plt.show()
